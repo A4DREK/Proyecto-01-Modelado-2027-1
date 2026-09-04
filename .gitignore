@@ -1,25 +1,70 @@
-/target
-
-**/mutants.out/
-
-rustc-ice-*.txt
-
+# Rust part
+**/target/
 **/*.rs.bk
 
 *.pdb
 
-.env
-.env.*
-.secrets/
-secrets/
-*.pem
-*.key
+#Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.generated_plugins
+app.*.symbols
+app.*.map.json
+.lingua_tmp/
 
-.DS_Store
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+**/macos/.generated/
+
+**/linux/flutter/ephemeral//ephemeral/
+
+
+#OS
 .AppleDouble
 .LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 
-.*.swp
-*.swo
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
 
+#IDE
 .vscode/
+!.vscode/extensions.json
+*.code-workspace
+
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+*.swp
+*.swo
+*~
+.netrwhist
+**/*_vimbackup/
+**/*_vimundo/
+.nvim.lua
+.nvimrc
+.exrc
+
+
+#Security
+.env
+.env.*
+! .env.example
+*.pem
+*.key
