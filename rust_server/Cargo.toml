@@ -17,3 +17,4 @@ anyhow = "1.0.86"
 log = "0.4.22"
 
 env_logger = "0.11.3"
+clap = { version = "4.6.6", features = ["derive"] }
