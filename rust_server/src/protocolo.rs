@@ -4,49 +4,79 @@ use serde_json::Result;
 
 //Utilizamos Enums para englobar todos los casos del protocolo 
 //y no sea asqueriso y tener cada type escrito como r#type u algo así 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum MensajesDeEntrada{
-
-    IDENTIFY{
-        username: String
+    
+    INDENTIFY{
+        username: String,
     },
 
+    Status{
+        status: String,
+    },
+    
+    USERS,
+
+    TEXT{
+        username: String,
+        text: String; 
+    },
+
+    PUBLIC_TEXT{
+        text: String;
+    },
+
+    NEW_ROOM{
+        roomname: String,
+    },
+
+    INVITE{
+        roomname: String,
+        usernames: Vec<Srting>,
+    },
+
+    JOIN_ROOM{
+        roomname: String,
+    },
+
+    ROOM_TEXT{
+        roomname: String, 
+        text: String,
+    },
+
+    LEAVE_ROOM{
+        roomname: String;
+    },
+    
+    DISCONNECT,
+}
+
+//se agrego este nuevo enum para agrega la parte del protooclo 
+//de los mensajes que se envian desde el server
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+pub enum MensajesDeSalida{
     RESPONSE{
         operation: String,
-        result: String,
-        
-        #[serde(skip_serializing_if = "Option::is_none")]
+        result: String, 
+
+        #[serde(skip_serializing_if = "Option::in_none")]
         extra: Option<String>,
-    },
+    }
 
     NEW_USER{
         username: String,
     },
 
-    //Inicia la parte del estado del usuario
-    STATUS{
-        status: String,
-    }
-    
     NEW_STATUS{
         username: String,
         status: String,
     },
 
-
-    //Solicita la lista de usuarios en el chat, ocupar un hash map
-    //y un rojinegro, ya veo en que lo agrego este último
-    USERS,
-
-    //La respuesta del server al pedir la lista de usuarios
     USER_LIST{
         users: HashMap<String, String>,
-    }
-    
-    TEXT{
-        username: String,
-        text: String,
     },
 
     TEXT_FROM{
@@ -54,23 +84,9 @@ pub enum MensajesDeEntrada{
         text: String,
     },
 
-    PUBLIC_TEXT{
-        text: String,
-    },
-    
     PUBLIC_TEXT_FROM{
         username: String,
         text: String,
-    },
-
-    //Parte del protocolo para las salas
-    NEW_ROOM{
-        roomname: String,
-    },
-
-    INVITE{
-        roomname: String,
-        usernames: Vect<String>,
     },
 
     INVITATION{
@@ -78,26 +94,14 @@ pub enum MensajesDeEntrada{
         roomname: String,
     },
 
-    JOIN_ROOM{
-        roomname: String,
-    },
-
     JOINED_ROOM{
-        roomname: String, 
+        roomname: String,
         username: String,
     },
 
-    //Ususarios de la salas
     ROOM_USER_LIST{
         roomname: String,
-        users: HashMap<String, String>,
-    },
-
-    //Texto dentro de una sala
-    
-    ROOM_TEXT{
-        roomname: String,
-        text: String,
+        users: HashMap<String>,
     },
 
     ROOM_TEXT_FROM{
@@ -106,21 +110,13 @@ pub enum MensajesDeEntrada{
         text: String,
     },
 
-    //Salir de la sala
-    LEAVE_ROOM{
-        roomname: String,
-    },
-
     LEFT_ROOM{
         roomname: String,
-        username+: String,
+        username: String,
     },
-
-    //Se desconecta el usuario que noob 
-    DISCONNECT,
 
     DISCONNECTED{
         username: String,
     },
-
 }
+
