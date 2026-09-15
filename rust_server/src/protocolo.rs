@@ -2,7 +2,17 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 //Utilizamos Enums para englobar todos los casos del protocolo 
-//y no sea asqueriso y tener cada type escrito como r#type u algo así 
+//y no sea asqueroso y tener cada type escrito como r#type u algo así 
+
+
+//Esta parte es para el etado del usuario del Status.
+#[derive(Serialize, Deserialize, Debug,PartialEq)]
+pub enum EstadoUsuario{
+    ACTIVE,
+    AWAY,
+    BUSY,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 #[allow(non_camel_case_types)]
@@ -12,8 +22,8 @@ pub enum MensajesDeEntrada{
         username: String,
     },
 
-    Status{
-        status: String,
+    STATUS{
+        status: EstadoUsuario, 
     },
     
     USERS,
@@ -40,6 +50,10 @@ pub enum MensajesDeEntrada{
         roomname: String,
     },
 
+    ROOM_USERS{
+        roomname: String,
+    },
+
     ROOM_TEXT{
         roomname: String, 
         text: String,
@@ -53,15 +67,51 @@ pub enum MensajesDeEntrada{
 }
 
 //se agrego este nuevo enum para agrega la parte del protooclo 
-//de los mensajes que se envian desde el server
+//de los mensajes que se envian desde el server todo esto es 
+//para la parte de TODOS los responses para no repetir varias
+//veces lo mismo
+//El tipo de operación que mandará el enum
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[allow(non_camel_case_types)]
+pub enum Operacion{
+    IDENTIFY,
+    TEXT,
+    NEW_ROOM,
+    INVITE,
+    JOIN_ROOM,
+    ROOM_USERS,
+    ROOM_TEXT,
+    LEAVE_ROOM,
+    INVALID,
+
+}
+
+//Enum para el resultado de la operación depende del caso
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[allow(non_camel_case_types)]
+pub enum ResultadoOperacion{
+    SUCCESS,
+    USER_ALREADY_EXISTS,
+    INVALID_USERNAME,
+    NO_SUCH_USER,
+    NOT_IDENTIFIED,
+    INVALID,
+
+    NEW_ROOM,
+    ROOM_ALREADY_EXISTS,
+    NO_SUCH_ROOM,
+    NOT_INVITED,
+    NOT_JOINED,
+
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 #[allow(non_camel_case_types)]
 pub enum MensajesDeSalida{
     RESPONSE{
-        operation: String,
-        result: String, 
+        operacion: Operacion,
+        resultado: ResultadoOperacion, 
 
         #[serde(skip_serializing_if = "Option::is_none")]
         extra: Option<String>,
@@ -73,7 +123,7 @@ pub enum MensajesDeSalida{
 
     NEW_STATUS{
         username: String,
-        status: String,
+        status: EstadoUsuario,
     },
 
     USER_LIST{
@@ -141,6 +191,20 @@ mod test{
     }
 
     #[test]
+    fn test_status(){
+
+        let json_original = r#"{"type":"STATUS","status":"AWAY"}"#;
+        let resutlado_json: MensajesDeEntrada = from_str(json_original).unwrap();
+
+        match resutlado_json {
+            MensajesDeEntrada::STATUS { status } => {
+                assert_eq!(status, EstadoUsuario::AWAY);
+            }
+            _ => panic!("Espera de variable AWAY"),
+        }
+    }
+
+    #[test]
     fn test_public_text(){
         let json_original = r#"{"type":"PUBLIC_TEXT","text":"¡Puro Toros Neza papá!"}"#;
         let resultado_json = from_str(json_original).unwrap();
@@ -166,6 +230,21 @@ mod test{
             _ => panic!("Esperaba Variante TEXT"),
         }
     }
+
+    #[test]
+    fn test_room_users(){
+        let json_original = r#"{"type":"ROOM_USERS","roomname":"Sala 1"}"#;
+        let resultado_json: MensajesDeEntrada = from_str(json_original).unwrap();
+
+        match resultado_json {
+            MensajesDeEntrada::ROOM_USERS { roomname } => {
+                assert_eq!(roomname, "Sala 1");
+            }
+            _ => panic!("Espera de variante ROOM_USERS"),
+        }
+    }
+
+    
 
     #[test]
     fn test_json_sin_parametros(){
@@ -200,22 +279,25 @@ mod test{
     #[test]
     fn test_salida_response_extra(){
         let respuesta = MensajesDeSalida::RESPONSE { 
-            operation: "IDENTIFY".to_string(), 
-            result: "SUCCESS".to_string(),
+            operacion: Operacion::IDENTIFY, 
+            resultado: ResultadoOperacion::SUCCESS,
             extra: Some("Bienvenido al server".to_string())
         };
 
         let resultado_json = to_string(&respuesta).unwrap();
 
         assert!(resultado_json.contains(r#""type":"RESPONSE""#));
+        assert!(resultado_json.contains(r#""operacion" : "IDENTIFY""#));
+        assert!(resultado_json.contains(r#""resultado" : "SUCCESS""#));
         assert!(resultado_json.contains(r#""extra":"Bienvenido al server""#));
+
     }
 
     #[test]
     fn test_salida_omite_campo(){
         let respuesta = MensajesDeSalida::RESPONSE {
-            operation: "IDENTIFY".to_string(),
-            result: "SUCCESS".to_string(),
+            operacion: Operacion::IDENTIFY,
+            resultado: ResultadoOperacion::SUCCESS,
             extra: None, 
         };
 
