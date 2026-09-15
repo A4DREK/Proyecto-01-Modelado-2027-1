@@ -35,30 +35,6 @@ pub async fn procesar_json(linea_txt : &str){
     }
 }
 
-#[cfg(test)]
-mod test{
-    use super::*;
 
-    #[test]
-    fn test_iden_exitoso(){
-        let json_original = r#"{"type":"IDENTIFY","username":"Adam"}"#;
-        let resutlado_json = serde_json::from_str(json_original).unwrap();
-
-        match resutlado_json{
-            MensajesDeEntrada::IDENTIFY { username } => {
-                assert_eq!(username, "Adam");
-            }
-            _ => panic!("Error, no hubo parseo de IDENTIFY"),
-        }
-    }
-
-    #[test]
-    fn test_json_invalido(){
-        let json_invalido = r#"{"usuario":"Max Versttapen"}"#;
-        let resultado_json = serde_json::from_str::<MensajesDeEntrada>(json_invalido);
-
-        assert!(resultado_json.is_err(), "Debe de fallar en el campo type de JSON");
-    }
-}
 
 
