@@ -20,11 +20,11 @@ pub enum MensajesDeEntrada{
 
     TEXT{
         username: String,
-        text: String; 
+        text: String,
     },
 
     PUBLIC_TEXT{
-        text: String;
+        text: String,
     },
 
     NEW_ROOM{
@@ -46,7 +46,7 @@ pub enum MensajesDeEntrada{
     },
 
     LEAVE_ROOM{
-        roomname: String;
+        roomname: String,
     },
     
     DISCONNECT,
@@ -64,7 +64,7 @@ pub enum MensajesDeSalida{
 
         #[serde(skip_serializing_if = "Option::in_none")]
         extra: Option<String>,
-    }
+    },
 
     NEW_USER{
         username: String,

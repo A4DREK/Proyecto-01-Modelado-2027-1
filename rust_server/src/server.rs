@@ -1,9 +1,10 @@
 //Codigo que me robé de: https://github.com/dheerajgopi/nimblecache/tree/blog-1
 
+use crate::manejador;
 use anyhow::{Error, Result};
-use log::error;
-use tokio::{io::AsyncWriteExt,  
-            net::{TcpListener, TcpStream},};
+use log::{info, error};
+use tokio::{net::{TcpListener, TcpStream},};
+use tokio_util::codec::{framed, LinesCodec};
 
 #[derive(Debug)]
 pub struct Server{
@@ -29,10 +30,23 @@ impl Server{
             };
 
             tokio::spawn(async move{
-                if let Err(e) = &mut socket.write_all("Hola! ".as_bytes()).await{
-                    error!("{}", e);
-                    panic!("Error escribiendo la respuesta")
+
+                //Convierte los sockets en un flujo de lineas para el JSON 
+                let mut framed = Framed::new(socket, LinesCodec::new());
+
+                //lectura de cada línea de código
+                while let Some(resultado) = framed.next().await {
+                    match resultado{
+                        Ok(linea) => {
+                            manejador::procesar_json(&linea).await;
+                        }
+                        Err(e) => {
+                            erorr!("Error en la lectura de la línea de código: {}", e);
+                            break;
+                        }
+                    }
                 }
+                info!("Cliente se desconectó lol");
             });
         }
     }
