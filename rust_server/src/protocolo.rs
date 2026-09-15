@@ -1,14 +1,14 @@
 use std::collections::HashMap;
-use serde_json::{Deserialize, Serialize};
-use serde_json::Result;
+use serde::{Deserialize, Serialize};
 
 //Utilizamos Enums para englobar todos los casos del protocolo 
 //y no sea asqueriso y tener cada type escrito como r#type u algo así 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
+#[allow(non_camel_case_types)]
 pub enum MensajesDeEntrada{
     
-    INDENTIFY{
+    IDENTIFY{
         username: String,
     },
 
@@ -33,7 +33,7 @@ pub enum MensajesDeEntrada{
 
     INVITE{
         roomname: String,
-        usernames: Vec<Srting>,
+        usernames: Vec<String>,
     },
 
     JOIN_ROOM{
@@ -57,12 +57,13 @@ pub enum MensajesDeEntrada{
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
+#[allow(non_camel_case_types)]
 pub enum MensajesDeSalida{
     RESPONSE{
         operation: String,
         result: String, 
 
-        #[serde(skip_serializing_if = "Option::in_none")]
+        #[serde(skip_serializing_if = "Option::is_none")]
         extra: Option<String>,
     },
 
@@ -101,7 +102,7 @@ pub enum MensajesDeSalida{
 
     ROOM_USER_LIST{
         roomname: String,
-        users: HashMap<String>,
+        users: HashMap<String, String>,
     },
 
     ROOM_TEXT_FROM{

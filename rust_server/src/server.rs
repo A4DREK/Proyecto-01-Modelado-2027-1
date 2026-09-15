@@ -1,10 +1,12 @@
 //Codigo que me robé de: https://github.com/dheerajgopi/nimblecache/tree/blog-1
 
 use crate::manejador;
+
 use anyhow::{Error, Result};
 use log::{info, error};
 use tokio::{net::{TcpListener, TcpStream},};
-use tokio_util::codec::{framed, LinesCodec};
+use tokio_util::codec::{Framed, LinesCodec};
+use futures::StreamExt;
 
 #[derive(Debug)]
 pub struct Server{
@@ -20,7 +22,7 @@ impl Server{
 
         loop{
 
-            let mut socket =  match self.aceptar_conexion().await {
+            let socket =  match self.aceptar_conexion().await {
                 Ok(stream) => stream,
 
                 Err(e) => {
@@ -41,7 +43,7 @@ impl Server{
                             manejador::procesar_json(&linea).await;
                         }
                         Err(e) => {
-                            erorr!("Error en la lectura de la línea de código: {}", e);
+                            error!("Error en la lectura de la línea de código: {}", e);
                             break;
                         }
                     }

@@ -1,10 +1,11 @@
+//Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
 use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida};
-use log::info::{info, error};
+use log::{info, error};
 
 pub async fn procesar_json(linea_txt : &str){
 
     //Inicio de los casos para deserializar el JSON dsjf
-    match serde::from_str<MensajesDeEntrada>(linea_txt){
+    match serde_json::from_str::<MensajesDeEntrada>(linea_txt){
         Ok(comando) => {
             info!("Coso del comando bien recibido: {:?}", comando);
 
@@ -15,7 +16,7 @@ pub async fn procesar_json(linea_txt : &str){
                 MensajesDeEntrada::IDENTIFY{username} => {
                     info!("Nombre del cliente: {}", username);
                 }
-                MensajeDeEntrada::TEXT{username, text} => {
+                MensajesDeEntrada::TEXT{username, text} => {
                     info!("Msj de {}: {}", username, text);
                 }
                 MensajesDeEntrada::USERS => {
@@ -31,6 +32,32 @@ pub async fn procesar_json(linea_txt : &str){
         Err(e) => {
             error!("Comando invalido del JSON en: {}. Texto recibido: {}", e, linea_txt);
         }
+    }
+}
+
+#[cfg(test)]
+mod test{
+    use super::*;
+
+    #[test]
+    fn test_iden_exitoso(){
+        let json_original = r#"{"type":"IDENTIFY","username":"Adam"}"#;
+        let resutlado_json = serde_json::from_str(json_original).unwrap();
+
+        match resutlado_json{
+            MensajesDeEntrada::IDENTIFY { username } => {
+                assert_eq!(username, "Adam");
+            }
+            _ => panic!("Error, no hubo parseo de IDENTIFY"),
+        }
+    }
+
+    #[test]
+    fn test_json_invalido(){
+        let json_invalido = r#"{"usuario":"Max Versttapen"}"#;
+        let resultado_json = serde_json::from_str::<MensajesDeEntrada>(json_invalido);
+
+        assert!(resultado_json.is_err(), "Debe de fallar en el campo type de JSON");
     }
 }
 
