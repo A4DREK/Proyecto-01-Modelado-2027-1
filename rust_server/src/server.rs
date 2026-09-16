@@ -37,6 +37,8 @@ impl Server{
 
                 //Convierte los sockets en un flujo de lineas para el JSON 
                 let mut framed: Framed<TcpStream, LinesCodec> = Framed::new(socket, LinesCodec::new());
+                let mut nombre_actual: Option<String> = None;
+                let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
 
                 //lectura de cada línea de código
                 while let Some(resultado) = framed.next().await{
@@ -51,9 +53,14 @@ impl Server{
 
                     info!("Recibido: {}", linea);
 
-                    let respuesta = match manejador::procesar_json(&linea, estado_cliente.clone()).await {
+                    let respuesta = match manejador::procesar_json(
+                        &linea,
+                        estado_cliente.clone(),
+                        tx.clone(),
+                        &mut nombre_actual,
+                    ).await{
                         Some(r) => r,
-                        None =>  continue,
+                        None => continue,
                     };
 
                     let json_salida = match serde_json::to_string(&respuesta) {

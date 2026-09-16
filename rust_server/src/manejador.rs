@@ -1,9 +1,14 @@
 //Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
-use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion};
-use crate::estado::EstadoCompartido;
+use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion, EstadoUsuario};
+use crate::estado::{EstadoCompartido, Transmisor};
 use log::{info, error};
 
-pub async fn procesar_json(linea_txt : &str, estado: EstadoCompartido) -> Option<MensajesDeSalida>{
+pub async fn procesar_json(
+    linea_txt : &str,
+    estado: EstadoCompartido,
+    tx_cliente: Transmisor,
+    nombre_actual: &mut Option<String>,
+) -> Option<MensajesDeSalida> {
 
     //Inicio de los casos para deserializar el JSON dsjf
     match serde_json::from_str::<MensajesDeEntrada>(linea_txt){
@@ -16,6 +21,27 @@ pub async fn procesar_json(linea_txt : &str, estado: EstadoCompartido) -> Option
                 //falta el poder almacenar los usuarios en el hashmap y así lol
                 MensajesDeEntrada::IDENTIFY{username} => {
                     info!("Nombre del cliente: {}", username);
+
+                    //Modificador de la memoria
+                    let mut memoria =  estado.lock().await;
+
+                    //Ver si el nombre no existe
+                    if memoria.usuarios.contains_key(&username){
+                        return Some(MensajesDeSalida::RESPONSE {
+                            operation: Operacion::IDENTIFY,
+                            resultado: ResultadoOperacion::USER_ALREADY_EXISTS,
+                            extra: Some("El usuario ya existe bro".to_string()) 
+                        });
+                    }
+
+                    //Si no existe 
+                    memoria.usuarios.insert(
+                        username.clone(),
+                        (tx_cliente.clone(),EstadoUsuario::ACTIVE )
+                    );
+
+                    *nombre_actual = Some(username.clone());
+                    
 
                     //Retorno del mensaje
                     Some(MensajesDeSalida::RESPONSE {
@@ -46,6 +72,30 @@ pub async fn procesar_json(linea_txt : &str, estado: EstadoCompartido) -> Option
                 MensajesDeEntrada::PUBLIC_TEXT { text } => {
                     info!("Mensaje general: {}", text);
                     // Enviar el texto a todos los usuarios que esten en la red
+                    let emisor  = match nombre_actual {
+                        Some(nombre) => nombre.clone(),
+                        None => {
+                            error!("Un usuario no identificado quiere mandar un msj");
+                            return None;
+                        }
+                    };
+
+                    //Lector de la memomria
+                    let memoria = estado.lock().await;
+
+                    //Manda el msj a todos menos al emisor, usa un for que aquí es un iterador
+                    for (destinatario, (tx_destino, _estado)) in memoria.usuarios.iter(){
+                        if destinatario != &emisor{
+                            let msj = MensajesDeSalida::PUBLIC_TEXT_FROM {
+                                username: emisor.clone(),
+                                text: text.clone(),
+                            };
+
+                            //Se manda el msj al otro usuario
+                            let _ = tx_destino.send(msj);
+                        }
+                    }
+
                     None
                 }
 
