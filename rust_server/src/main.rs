@@ -22,7 +22,7 @@ pub struct Cli{
 #[tokio::main]
 async fn main() -> anyhow::Result<()>{
 
-    //inicio de los logs en consola
+    //inicio de los logs en consola ocupar en la terminal RUST_LOG=info cargo run -- --(num puerto)
     env_logger::init();
     //Para los comandos de la terminal
     let args = Cli::parse();
