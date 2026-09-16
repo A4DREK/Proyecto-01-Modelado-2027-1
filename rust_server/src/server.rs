@@ -38,42 +38,49 @@ impl Server{
                 //Convierte los sockets en un flujo de lineas para el JSON 
                 let mut framed: Framed<TcpStream, LinesCodec> = Framed::new(socket, LinesCodec::new());
                 let mut nombre_actual: Option<String> = None;
-                let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+                let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
                 //lectura de cada línea de código
-                while let Some(resultado) = framed.next().await{
-                    let linea = match resultado {
-                        Ok(l) => l,
-                        Err(e) => {
-                            error!("Error en la lectura de la línea de código: {}", e);
-                            break;
+                loop {
+
+                    //uso de TokioSelect 
+                    tokio::select! {
+                        resultado = framed.next() =>{
+                            let linea = match resultado{
+                                Some(Ok(l)) => l,
+                                Some(Err(e)) => {
+                                    error!("Erroe en la lectura: {}", e);   
+                                    break;
+                                }
+                                None => break, //Valio el cliente   
+                            };
+                            info!("Recibido: {}", linea);
+
+                            let respuesta = match manejador::procesar_json(
+                                &linea, estado_cliente.clone(),
+                                tx.clone(),
+                                &mut nombre_actual).await{
+                                    Some(r) =>  r,
+                                    None => continue,
+                                };
+
+                            let salida_json = serde_json::to_string(&respuesta).unwrap_or_default();
+                            if let Err(e) = framed.send(salida_json).await{
+                                error!("Error al enciar msj al cliente: {}", e);
+                                break;
+                            }
+
                         }
                         
-                    };
-
-                    info!("Recibido: {}", linea);
-
-                    let respuesta = match manejador::procesar_json(
-                        &linea,
-                        estado_cliente.clone(),
-                        tx.clone(),
-                        &mut nombre_actual,
-                    ).await{
-                        Some(r) => r,
-                        None => continue,
-                    };
-
-                    let json_salida = match serde_json::to_string(&respuesta) {
-                        Ok(j) => j,
-                        Err(e) => {
-                            error!("Error en la respuesta JSON: {} ", e);
-                            continue;
+                        //Otro msj de otro usuario desde el canal interno rx
+                        Some(mensaje_interno) = rx.recv() => {
+                            let salida_json = serde_json::to_string(&mensaje_interno).unwrap_or_default();
+                            if let Err(e) = framed.send(salida_json).await{
+                                error!("Error al enviar msj interno: {}", e);
+                                break;
+                            }
                         }
-                    };
-
-                    if let Err(e) = framed.send(json_salida).await {
-                        error!("Error al enviar msj al cliente: {}", e);
-                        break;
+                        
                     }
                 }
                 info!("Cliente se desconectó lol");

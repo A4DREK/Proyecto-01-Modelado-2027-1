@@ -28,4 +28,5 @@ impl EstadoServidor{
 //Aquí se ocupa el ARC para que pueda tener "multiple ownership" cosa que Rust no dejá 
 //Mutex lo ocupamos para que no haya un choque entre los hilos de ejecución y siga siendo
 //asincrono que es como Tokio trabaja :p
+//De aquí leí lo de ARC https://medium.com/@Murtza/mastering-rust-arc-and-mutex-a-comprehensive-guide-to-safe-shared-state-in-concurrent-programming-1913cd17e08d
 pub type EstadoCompartido = Arc<Mutex<EstadoServidor>>;
