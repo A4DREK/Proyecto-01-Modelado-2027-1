@@ -18,7 +18,7 @@ pub async fn procesar_json(linea_txt : &str) -> Option<MensajesDeSalida>{
 
                     //Retorno del mensaje
                     Some(MensajesDeSalida::RESPONSE {
-                        operacion: Operacion::IDENTIFY,
+                        operation: Operacion::IDENTIFY,
                         resultado: ResultadoOperacion::SUCCESS,
                         extra: Some(username),
                     })
@@ -102,7 +102,7 @@ pub async fn procesar_json(linea_txt : &str) -> Option<MensajesDeSalida>{
             
             //Debe de salir INVALID si llega a pasar algo que no
             Some(MensajesDeSalida::RESPONSE{
-                operacion: Operacion::INVALID,
+                operation: Operacion::INVALID,
                 resultado: ResultadoOperacion::INVALID,
                 extra: None,
             })

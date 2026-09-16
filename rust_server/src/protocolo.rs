@@ -110,7 +110,7 @@ pub enum ResultadoOperacion{
 #[allow(non_camel_case_types)]
 pub enum MensajesDeSalida{
     RESPONSE{
-        operacion: Operacion,
+        operation: Operacion,
         resultado: ResultadoOperacion, 
 
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -249,8 +249,8 @@ mod test{
     #[test]
     fn test_json_sin_parametros(){
         //Para los identufy de ROOM, USERS, DISCONNECT
-        let json_users = r#"{"type" : "USERS"}"#;
-        let json_disconnect = r#"{"type" : "DISCONNECT"}"#;
+        let json_users = r#"{"type":"USERS"}"#;
+        let json_disconnect = r#"{"type":"DISCONNECT"}"#;
 
         let msg_users: MensajesDeEntrada = from_str(json_users).unwrap();
         let msg_disconnect: MensajesDeEntrada = from_str(json_disconnect).unwrap();
@@ -269,7 +269,7 @@ mod test{
 
     #[test]
     fn test_json_desconocido(){
-        let json_desconocido = r#"{"type" : "COMANDO_FANTASMA"}"#;
+        let json_desconocido = r#"{"type":"COMANDO_FANTASMA"}"#;
         let resultado_json = from_str::<MensajesDeEntrada>(json_desconocido);
 
         assert!(resultado_json.is_err(), "Un type desconocido, el Enum debe de fallar");
@@ -277,9 +277,9 @@ mod test{
 
     //Pruebas para los mensajes de salida 
     #[test]
-    fn test_salida_response_extra(){
+    fn test_salida_respuesta_extra(){
         let respuesta = MensajesDeSalida::RESPONSE { 
-            operacion: Operacion::IDENTIFY, 
+            operation: Operacion::IDENTIFY, 
             resultado: ResultadoOperacion::SUCCESS,
             extra: Some("Bienvenido al server".to_string())
         };
@@ -287,8 +287,8 @@ mod test{
         let resultado_json = to_string(&respuesta).unwrap();
 
         assert!(resultado_json.contains(r#""type":"RESPONSE""#));
-        assert!(resultado_json.contains(r#""operacion" : "IDENTIFY""#));
-        assert!(resultado_json.contains(r#""resultado" : "SUCCESS""#));
+        assert!(resultado_json.contains(r#""operation":"IDENTIFY""#));
+        assert!(resultado_json.contains(r#""resultado":"SUCCESS""#));
         assert!(resultado_json.contains(r#""extra":"Bienvenido al server""#));
 
     }
@@ -296,7 +296,7 @@ mod test{
     #[test]
     fn test_salida_omite_campo(){
         let respuesta = MensajesDeSalida::RESPONSE {
-            operacion: Operacion::IDENTIFY,
+            operation: Operacion::IDENTIFY,
             resultado: ResultadoOperacion::SUCCESS,
             extra: None, 
         };

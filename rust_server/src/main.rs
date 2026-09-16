@@ -13,7 +13,7 @@ use tokio::net::TcpListener;
 #[command(name = "Servidor Duckson", about = "Un server TCP")]
 pub struct Cli{
 
-    #[arg(short, long, default_value = "1234")]
+    #[arg(short, long, default_value = "8080")]
     puerto: u16,
 
 }
@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()>{
 
     //Se crea la dirección para que el ususario en la terminal ponga de que 
     //cargo run -- --puerto 6767
-    let direccion = format!("127.0.0.1: {}", args.puerto);
+    let direccion = format!("127.0.0.1:{}", args.puerto);
 
 
     let escucha  = match TcpListener::bind(&direccion).await{
