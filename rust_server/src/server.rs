@@ -1,20 +1,22 @@
 //Codigo que me robé de: https://github.com/dheerajgopi/nimblecache/tree/blog-1
-use crate::manejador;
+use crate::{estado::EstadoCompartido, manejador};
 
 use anyhow::{Error, Result};
 use log::{info, error};
 use tokio::{net::{TcpListener, TcpStream},};
 use tokio_util::codec::{Framed, LinesCodec};
 use futures::{SinkExt, StreamExt};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Server{
     listener: TcpListener,
+    estado: EstadoCompartido, 
 }
 
 impl Server{
-    pub fn new(listener: TcpListener) -> Server{
-        Server { listener }
+    pub fn new(listener: TcpListener, estado: EstadoCompartido) -> Server{
+        Server { listener , estado}
     }
 
     pub async fn run(&mut self) -> Result<()>{
@@ -30,6 +32,7 @@ impl Server{
                 }
             };
 
+            let estado_cliente = Arc::clone(&self.estado);
             tokio::spawn(async move{
 
                 //Convierte los sockets en un flujo de lineas para el JSON 
@@ -48,7 +51,7 @@ impl Server{
 
                     info!("Recibido: {}", linea);
 
-                    let respuesta = match manejador::procesar_json(&linea).await {
+                    let respuesta = match manejador::procesar_json(&linea, estado_cliente.clone()).await {
                         Some(r) => r,
                         None =>  continue,
                     };

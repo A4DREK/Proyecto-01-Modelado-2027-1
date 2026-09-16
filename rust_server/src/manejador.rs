@@ -1,8 +1,9 @@
 //Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
 use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion};
+use crate::estado::EstadoCompartido;
 use log::{info, error};
 
-pub async fn procesar_json(linea_txt : &str) -> Option<MensajesDeSalida>{
+pub async fn procesar_json(linea_txt : &str, estado: EstadoCompartido) -> Option<MensajesDeSalida>{
 
     //Inicio de los casos para deserializar el JSON dsjf
     match serde_json::from_str::<MensajesDeEntrada>(linea_txt){

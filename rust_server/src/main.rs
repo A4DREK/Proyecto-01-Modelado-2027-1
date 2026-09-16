@@ -3,11 +3,14 @@
 mod server;
 mod manejador;
 mod protocolo;
+mod estado;
 
-use crate::server::Server;
+use crate::{estado::EstadoServidor, server::Server};
 use clap::Parser;
+use tokio::sync::Mutex;
 use log::info;
 use tokio::net::TcpListener;
+use std::sync::Arc;
 
 #[derive(Parser, Debug)]
 #[command(name = "Servidor Duckson", about = "Un server TCP")]
@@ -40,8 +43,9 @@ async fn main() -> anyhow::Result<()>{
         Err(e) => panic!("No se puede coneectar el escucha con {} .Err: {}", &direccion, e),
     };
 
+    let estado_compartido = Arc::new(Mutex::new(EstadoServidor::nuevo()));
     //Inicia el server
-    let mut server = Server::new(escucha);
+    let mut server = Server::new(escucha, estado_compartido);
 
     server.run().await?;
 
