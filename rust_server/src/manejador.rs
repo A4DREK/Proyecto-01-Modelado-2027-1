@@ -63,10 +63,44 @@ pub async fn procesar_json(
                     None
                 }
 
-                MensajesDeEntrada::TEXT { username, text } => {
-                    info!("Mensaje de {}: {}", username, text );
+                MensajesDeEntrada::TEXT { username: destinatario, text } => {
+                    info!("Mensaje para {}: {}", destinatario, text );
                     //Buscar el socket del destinatario y devovler TEXT_FROM
-                    None
+                    
+                    let emisor = match nombre_actual {
+                        Some(nombre) => nombre.clone(),
+                        None => {
+                            error!("Un usuario no identificado quiere mandar un msj");
+                            return None;
+                        }
+                    };
+
+                    //Lector de la memoria 
+                    let memoria = estado.lock().await;
+
+                    //Buscamos al usuario que este en el HashMap 
+                    match memoria.usuarios.get(&destinatario) {
+                        Some((tx_destino, _estado)) => {
+
+                            let msj = MensajesDeSalida::TEXT_FROM {
+                                username: emisor,
+                                text: text.clone(), 
+                            };
+
+                            let _ = tx_destino.send(msj);
+
+                            None
+                        }
+                        None => {
+                            //Si el usuario no existe
+                            Some(MensajesDeSalida::RESPONSE {
+                                operation: Operacion::TEXT,
+                                resultado: ResultadoOperacion::NO_SUCH_USER,
+                                extra: Some(destinatario.clone()),
+                            })
+                        }
+                    }
+
                 }
 
                 MensajesDeEntrada::PUBLIC_TEXT { text } => {
@@ -157,6 +191,51 @@ pub async fn procesar_json(
                 resultado: ResultadoOperacion::INVALID,
                 extra: None,
             })
+        }
     }
 }
+
+#[cfg(test)]
+mod test{
+    use crate::estado::EstadoServidor;
+    use super::*;
+    use tokio::sync::{mpsc, Mutex};
+    use std::sync::Arc;
+    use std::collections::HashMap;
+
+    //Si el destinatario no existe
+    #[tokio::test] 
+    async fn test_no_existe_usuario(){
+        let estado_mock = Arc::new(Mutex::new(EstadoServidor::nuevo()));
+
+        let (tx_cliente, _rx_cliente) = mpsc::unbounded_channel();
+        let mut nombre_actual = Some("Aly".to_string());
+        let linea_txt = r#"{"type": "TEXT", "username": "Bob", "text": "Hola Bob"}"#.to_string();
+
+        
+        let respuesta = procesar_json(
+            &linea_txt,
+            estado_mock.clone(),
+            tx_cliente,
+            &mut nombre_actual,
+        ).await;
+
+        match respuesta {
+            Some(MensajesDeSalida::RESPONSE {operation,resultado,extra }) => {
+                assert_eq!(operation, Operacion::TEXT); 
+                assert_eq!(resultado, ResultadoOperacion::NO_SUCH_USER);
+                assert_eq!(extra, Some("Bob".to_string()));
+            }
+            _ => {
+                panic!("Se espera un NO_SUCH_USER como respuesta")
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_texto_exitoso(){
+        let estado_mock = Arc::new(Mutex::new(EstadoServidor::nuevo()));
+
+        
+    }
 }
