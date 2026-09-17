@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()>{
 
     //Se crea la dirección para que el ususario en la terminal ponga de que 
     //cargo run -- --puerto 6767
-    let direccion = format!("127.0.0.1:{}", args.puerto);
+    let direccion = format!("127.0.0.0:{}", args.puerto);
 
 
     let escucha  = match TcpListener::bind(&direccion).await{

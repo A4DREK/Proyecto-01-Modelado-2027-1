@@ -232,10 +232,4 @@ mod test{
         }
     }
 
-    #[tokio::test]
-    async fn test_texto_exitoso(){
-        let estado_mock = Arc::new(Mutex::new(EstadoServidor::nuevo()));
-
-        
-    }
 }
