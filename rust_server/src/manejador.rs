@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 //Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
 use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion, EstadoUsuario};
-use crate::estado::{EstadoCompartido, Transmisor};
+use crate::estado::{self, EstadoCompartido, Transmisor};
 use log::{info, error};
 
 pub async fn procesar_json(
@@ -16,9 +18,7 @@ pub async fn procesar_json(
             info!("Coso del comando bien recibido: {:?}", comando);
 
             match comando{
-                //Inicia a checar que parte del comando del JSON es, vamos por casos
-                //Solo POR ESTE MOMENTO ES PARA QUE VER SI SI JALA O NO 
-                //falta el poder almacenar los usuarios en el hashmap y así lol
+                //Inicia a checar que parte del comando del JSON
                 MensajesDeEntrada::IDENTIFY{username: nuevo_usuario} => {
                     info!("Nombre del cliente: {}", nuevo_usuario);
 
@@ -102,8 +102,27 @@ pub async fn procesar_json(
 
                 MensajesDeEntrada::USERS => {
                     info!("Se solicita la lista de usuarios");
-                    //LEER EL FKING HASH MAP Y DEVOLVER USER_LIST   
-                    None
+                    //LEER EL FKING HASH MAP Y DEVOLVER USER_LIST  
+                    let memoria = estado.lock().await;
+
+                    let _emisor = match verificar_usuario(nombre_actual) {
+                        Ok(nombre) => nombre,
+                        Err(mensaje_error) => return Some(mensaje_error),
+                    };
+
+                    let mut lista_usuarios :HashMap<String, String> = HashMap::new();
+
+                    for(nombre, (_tx, estado)) in memoria.usuarios.iter(){
+
+                        let estado_str = format!("{:?}", estado);
+                        lista_usuarios.insert(nombre.clone(), estado_str);
+                    }
+
+                    
+                    Some(MensajesDeSalida::USER_LIST {
+                        users: lista_usuarios,
+                    })
+
                 }
 
                 MensajesDeEntrada::TEXT { username: destinatario, text } => {
@@ -235,6 +254,17 @@ pub async fn procesar_json(
                 extra: None,
             })
         }
+    }
+}
+
+fn verificar_usuario(nombre_actual: &mut Option<String>) -> Result<String, MensajesDeSalida>{
+    match nombre_actual{
+        Some(nombre) => Ok(nombre.clone()),
+        None => Err(MensajesDeSalida::RESPONSE {
+            operation: Operacion::INVALID,
+            resultado: ResultadoOperacion::INVALID,
+            extra: None,
+        }),
     }
 }
 
