@@ -19,35 +19,43 @@ pub async fn procesar_json(
                 //Inicia a checar que parte del comando del JSON es, vamos por casos
                 //Solo POR ESTE MOMENTO ES PARA QUE VER SI SI JALA O NO 
                 //falta el poder almacenar los usuarios en el hashmap y así lol
-                MensajesDeEntrada::IDENTIFY{username} => {
-                    info!("Nombre del cliente: {}", username);
+                MensajesDeEntrada::IDENTIFY{username: nuevo_usuario} => {
+                    info!("Nombre del cliente: {}", nuevo_usuario);
 
                     //Modificador de la memoria
                     let mut memoria =  estado.lock().await;
 
                     //Ver si el nombre no existe
-                    if memoria.usuarios.contains_key(&username){
+                    if memoria.usuarios.contains_key(&nuevo_usuario){
                         return Some(MensajesDeSalida::RESPONSE {
                             operation: Operacion::IDENTIFY,
                             resultado: ResultadoOperacion::USER_ALREADY_EXISTS,
-                            extra: Some("El usuario ya existe bro".to_string()) 
+                            extra: Some(nuevo_usuario),
                         });
+                    }
+
+                    let msj_notificacion = MensajesDeSalida::NEW_USER {
+                        username: nuevo_usuario.clone(), 
+                    };
+
+                    for(_nombre, (tx_destino, _estado)) in memoria.usuarios.iter(){
+                        let _ = tx_destino.send(msj_notificacion.clone());
                     }
 
                     //Si no existe 
                     memoria.usuarios.insert(
-                        username.clone(),
+                        nuevo_usuario.clone(),
                         (tx_cliente.clone(),EstadoUsuario::ACTIVE )
                     );
 
-                    *nombre_actual = Some(username.clone());
+                    *nombre_actual = Some(nuevo_usuario.clone());
                     
 
                     //Retorno del mensaje
                     Some(MensajesDeSalida::RESPONSE {
                         operation: Operacion::IDENTIFY,
                         resultado: ResultadoOperacion::SUCCESS,
-                        extra: Some(username),
+                        extra: Some(nuevo_usuario),
                     })
                 }
 

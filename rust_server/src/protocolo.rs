@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 
 
 //Esta parte es para el etado del usuario del Status.
-#[derive(Serialize, Deserialize, Debug,PartialEq)]
+#[derive(Serialize, Deserialize, Debug,PartialEq, Clone)]
 pub enum EstadoUsuario{
     ACTIVE,
     AWAY,
     BUSY,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 #[allow(non_camel_case_types)]
 pub enum MensajesDeEntrada{
@@ -71,7 +71,7 @@ pub enum MensajesDeEntrada{
 //para la parte de TODOS los responses para no repetir varias
 //veces lo mismo
 //El tipo de operación que mandará el enum
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[allow(non_camel_case_types)]
 pub enum Operacion{
     IDENTIFY,
@@ -87,7 +87,7 @@ pub enum Operacion{
 }
 
 //Enum para el resultado de la operación depende del caso
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[allow(non_camel_case_types)]
 pub enum ResultadoOperacion{
     SUCCESS,
@@ -105,7 +105,7 @@ pub enum ResultadoOperacion{
 
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 #[allow(non_camel_case_types)]
 pub enum MensajesDeSalida{
