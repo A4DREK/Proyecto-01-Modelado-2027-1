@@ -10,8 +10,20 @@ use tokio::io::{self, AsyncBufReadExt};
 #[tokio::main]
 async fn main() {
 
+    //creación de un parámetro para poder mandar arguemntos a consola
+    let args: Vec<String> = std::env::args().collect();
+
+    let server_adrr = if args.len() > 1{
+        args[1].clone()
+    }else{
+        print!("No se brindó un dirección IP, Default a 127.0.0.1:1234");
+        "127.0.0.1:1234".to_string()
+    };
+
+    print!("Conexión a {}", server_adrr);
+
     //se conecta con el server
-    let stream = match TcpStream::connect("127.0.0.1:1234").await{
+    let stream = match TcpStream::connect(&server_adrr).await{
         Ok(r) => r,
         Err(e) => {
             println!("ERRRRROOOOOOOOR: {}", e);
