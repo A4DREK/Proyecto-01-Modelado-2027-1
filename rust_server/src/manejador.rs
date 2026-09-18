@@ -59,9 +59,44 @@ pub async fn procesar_json(
                     })
                 }
 
-                MensajesDeEntrada::STATUS { status } => {
-                    info!("Cambio de estado del usuario a: {:?}", status);
+                MensajesDeEntrada::STATUS { status: nuevo_estado } => {
+                    info!("Cambio de estado del usuario a: {:?}", nuevo_estado);
                     //Aquí se debe de actualizar el estado en memoria y pasarlo a todos los usuarios
+
+                    //Memoria para buscar al usuario
+                    let mut memoria = estado.lock().await;
+
+                    //Se busca que esté identificó al usuario
+                    let emisor = match nombre_actual {
+                        //Si el nombre existe
+                        Some(nombre) => nombre.clone(),
+                        //Si no existe el nombre
+                        None => {
+                            return  Some(MensajesDeSalida::RESPONSE {
+                                operation: Operacion::INVALID,
+                                resultado: ResultadoOperacion::NOT_IDENTIFIED,
+                                extra: None,
+                            });
+                        }
+                    };
+
+                    if let Some((_tx, estado_actual)) = memoria.usuarios.get_mut(&emisor) {
+                        if *estado_actual != nuevo_estado {
+                            *estado_actual = nuevo_estado.clone();
+
+                            let msj_usuarios = MensajesDeSalida::NEW_STATUS {
+                                username: emisor.clone(),
+                                status: nuevo_estado,
+                            };
+
+                            for (nombre,(tx_destino, _)) in memoria.usuarios.iter(){
+                                if *nombre != emisor {
+                                    let _ = tx_destino.send(msj_usuarios.clone()); 
+                                }
+                            }
+                        }
+                    }
+
                     None
                 }
 
