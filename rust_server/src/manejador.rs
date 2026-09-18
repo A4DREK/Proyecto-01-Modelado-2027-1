@@ -209,7 +209,9 @@ mod test{
         let estado_mock = Arc::new(Mutex::new(EstadoServidor::nuevo()));
 
         let (tx_cliente, _rx_cliente) = mpsc::unbounded_channel();
+        
         let mut nombre_actual = Some("Aly".to_string());
+        
         let linea_txt = r#"{"type": "TEXT", "username": "Bob", "text": "Hola Bob"}"#.to_string();
 
         
@@ -230,6 +232,44 @@ mod test{
                 panic!("Se espera un NO_SUCH_USER como respuesta")
             }
         }
+    }
+
+    #[tokio::test]
+    async fn test_texto_bien(){
+        let estado_mock = Arc::new(Mutex::new(EstadoServidor::nuevo()));
+
+        //Destino
+        let (tx_bob,  mut rx_bob) = mpsc::unbounded_channel();
+        estado_mock.lock().await.usuarios.insert(
+            "Bob".to_string(),
+            (tx_bob, EstadoUsuario::ACTIVE)
+        );
+
+        //Quien manda el msj
+        let (tx_aly, _rx_aly) = mpsc::unbounded_channel();
+        let mut nombre_aly = Some("Aly".to_string());
+        let msj_entrada = r#"{"type": "TEXT", "username": "Bob", "text": "Hola, Bob"}"#.to_string();
+
+
+        let respuesta = procesar_json(
+            &msj_entrada,
+            estado_mock,
+            tx_aly,
+            &mut nombre_aly,
+        ).await;
+
+        assert!(respuesta.is_none());
+
+        let msj_para_bob = rx_bob.recv().await.unwrap();
+        match msj_para_bob {
+            MensajesDeSalida::TEXT_FROM {username, text} => {
+                assert_eq!(username, "Aly");
+                assert_eq!(text, "Hola, Bob");
+            }
+            _ => panic!("Bob debió recibir un TEXT_FROM"),
+        }
+
+
     }
 
 }
