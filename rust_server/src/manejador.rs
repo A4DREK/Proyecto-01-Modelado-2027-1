@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 //Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
 use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion, EstadoUsuario};
-use crate::estado::{self, EstadoCompartido, Transmisor};
+use crate::estado::{EstadoCompartido, Transmisor};
 use log::{info, error};
 
 pub async fn procesar_json(
@@ -274,7 +274,6 @@ mod test{
     use super::*;
     use tokio::sync::{mpsc, Mutex};
     use std::sync::Arc;
-    use std::collections::HashMap;
 
     //Si el destinatario no existe
     #[tokio::test] 
