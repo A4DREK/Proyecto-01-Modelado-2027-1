@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 //Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
 use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion, EstadoUsuario};
-use crate::estado::{EstadoCompartido, Transmisor};
+use crate::estado::{EstadoCompartido, Salas, Transmisor};
 use log::{info, error};
 
 pub async fn procesar_json(
@@ -198,6 +198,41 @@ pub async fn procesar_json(
                 MensajesDeEntrada::NEW_ROOM { roomname } => {
                     info!("Se crea una nueva sala, llamada: {}", roomname);
                     //Tengo que meter la lógica para crear las salas
+
+                    let mut memoria = estado.lock().await;
+
+                    let emisor = match verificar_usuario(nombre_actual) {
+                        Ok(nombre) => nombre,
+                        Err(e) => return Some(e),
+                    };
+
+                    //Si ya existe la sala 
+                    if memoria.salas.contains_key(&roomname){
+                        return Some(MensajesDeSalida::RESPONSE {
+                            operation: Operacion::NEW_ROOM,
+                            resultado: ResultadoOperacion::ROOM_ALREADY_EXISTS,
+                            extra: Some(roomname),
+                        });
+                    }
+
+                    let mut miembros_iniciales  = std::collections::HashSet::new();
+                    miembros_iniciales.insert(emisor.clone()); //Solo está el que creo la sala
+
+                    let nueva_sala = Salas {
+                        dueno_sala: emisor.clone(),
+                        miembros: miembros_iniciales,
+                    };
+
+                    memoria.salas.insert(roomname.clone(), nueva_sala);
+
+                    Some(MensajesDeSalida::RESPONSE {
+                        operation: Operacion::NEW_ROOM,
+                        resultado: ResultadoOperacion::SUCCESS,
+                        extra: Some(roomname),
+                    });
+
+
+
                     None
                 }
 

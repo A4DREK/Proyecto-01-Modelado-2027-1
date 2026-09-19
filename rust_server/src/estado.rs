@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use crate::protocolo::{EstadoUsuario, MensajesDeSalida};
@@ -6,13 +6,20 @@ use crate::protocolo::{EstadoUsuario, MensajesDeSalida};
 //Creación de un transmisor para mandar msj al socket del usuario 
 pub type Transmisor = mpsc::UnboundedSender<MensajesDeSalida>;
 
+//Para la parte de las salas
+#[derive(Debug)]
+pub struct Salas{
+    pub dueno_sala: String,
+    pub miembros: HashSet<String>, //para que no se repita
+}
+
 #[derive(Debug)]
 pub struct EstadoServidor{
     //Llave1 del HashMap, la definiremos tq Username -> Valor
     pub usuarios: HashMap<String, (Transmisor, EstadoUsuario)>,
 
     //LLave2 del HashMap2, la definiremos tq Sala -> Valor
-    pub salas: HashMap<String, Vec<String>>,
+    pub salas: HashMap<String, Salas>,
 }
 
 impl EstadoServidor{
