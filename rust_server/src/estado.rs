@@ -10,7 +10,8 @@ pub type Transmisor = mpsc::UnboundedSender<MensajesDeSalida>;
 #[derive(Debug)]
 pub struct Salas{
     pub dueno_sala: String,
-    pub miembros: HashSet<String>, //para que no se repita
+    pub miembros: HashSet<String>,
+    pub invitados: HashSet<String>, //para que no se repita
 }
 
 #[derive(Debug)]

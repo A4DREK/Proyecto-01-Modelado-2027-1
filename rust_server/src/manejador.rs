@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 //Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
 use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion, EstadoUsuario};
-use crate::estado::{EstadoCompartido, Salas, Transmisor};
+use crate::estado::{EstadoCompartido, Salas, Transmisor, EstadoServidor};
 use log::{info, error};
 
 pub async fn procesar_json(
@@ -221,6 +221,7 @@ pub async fn procesar_json(
                     let nueva_sala = Salas {
                         dueno_sala: emisor.clone(),
                         miembros: miembros_iniciales,
+                        invitados: std::collections::HashSet::new(),
                     };
 
                     memoria.salas.insert(roomname.clone(), nueva_sala);
@@ -231,14 +232,69 @@ pub async fn procesar_json(
                         extra: Some(roomname),
                     });
 
-
-
                     None
                 }
 
                 MensajesDeEntrada::INVITE { roomname, usernames } => {
                     info!("Invitar de {} a {:?}", roomname, usernames);
                     //Algo tengo que hacer para las invitaciones 
+
+                    let emisor = match verificar_usuario(nombre_actual) {
+                        Ok(nombre) => nombre,
+                        Err(e) => return Some(e),
+                    };
+
+                    let mut memoria = estado.lock().await;
+
+                    let EstadoServidor { ref mut salas, ref usuarios } = *memoria;
+
+                    //Validar que exista la sala
+                    let sala = match salas.get_mut(&roomname) {
+                        Some(s) => s,
+                        None => {
+                            return Some(MensajesDeSalida::RESPONSE {
+                                operation: Operacion::INVITE,
+                                resultado: ResultadoOperacion::NO_SUCH_ROOM,
+                                extra: Some(roomname),
+                            });
+                        }
+                    };
+
+                    //Si el usuario no esta en la sala
+                    if !sala.miembros.contains(&emisor){
+                        return  None;
+                    }
+
+                    //Valida a todos los usuarios que esten en la sala  
+                    for usuario in &usernames {
+                        if !usuarios.contains_key(usuario) {
+                            return Some(MensajesDeSalida::RESPONSE {
+                                operation: Operacion::INVITE,
+                                resultado: ResultadoOperacion::NO_SUCH_USER,
+                                extra: Some(usuario.clone()),
+                            });
+                        }
+                    }
+
+                    //Crea la invitacion para los destinatario del chat
+                    let invitacion = MensajesDeSalida::INVITATION {
+                        username: emisor.clone(),
+                        roomname: roomname.clone(),
+                    };
+
+                    for usuario in usernames {
+                        //Por si hay algún duplicado o si ya está en la sala
+                        if sala.miembros.contains(&usuario) || sala.invitados.contains(&usuario){
+                            continue;
+                        }
+
+                        sala.invitados.insert(usuario.clone());
+
+                        if let Some((tx_destino, _)) = usuarios.get(&usuario){
+                            let _ = tx_destino.send(invitacion.clone());
+                        }
+                    }
+
                     None
                 }
 
@@ -246,6 +302,58 @@ pub async fn procesar_json(
                     info!("Se acepto la invitación a: {}", roomname);
 
                     //Se tiene que validar la invitación y unir a la sala
+
+                    //Se verifica que este el emisor
+                    let emisor: String = match verificar_usuario(nombre_actual) {
+                        Ok(nombre) => nombre,
+                        Err(e) => return Some(e), 
+                    };
+
+                    let mut memoria = estado.lock().await;
+                    let EstadoServidor { ref usuarios, ref mut salas } = *memoria;
+
+                    //Valida que exista la sala
+                    let sala = match salas.get_mut(&roomname){
+                        Some(s) => s,
+                        None => {
+                            return Some(MensajesDeSalida::RESPONSE {
+                                operation: Operacion::JOIN_ROOM,
+                                resultado: ResultadoOperacion::NO_SUCH_ROOM,
+                                extra: Some(roomname),
+                            });
+                        }
+                    };
+
+                    //validar que el usuario haya sido invitado
+                    if !sala.invitados.contains(&emisor){
+                        return Some(MensajesDeSalida::RESPONSE {
+                            operation: Operacion::JOIN_ROOM,
+                            resultado: ResultadoOperacion::NOT_INVITED,
+                            extra: Some(roomname),
+                        });
+                    }
+
+                    //cambiamos los parámetros de invitados y de miembros
+                    sala.invitados.remove(&emisor);
+                    sala.miembros.insert(emisor.clone());
+
+                    let msj_notificacion = MensajesDeSalida::JOINED_ROOM {
+                        roomname: roomname.clone(),
+                        username: emisor.clone(),
+                    };
+
+                    for miembro in &sala.miembros {
+                        if let Some((tx_destino, _estado_usuario)) = usuarios.get(miembro) {
+                            let _ = tx_destino.send(msj_notificacion.clone());
+                        }
+                    }
+
+                    Some(MensajesDeSalida::RESPONSE {
+                        operation: Operacion::JOIN_ROOM,
+                        resultado: ResultadoOperacion::SUCCESS,
+                        extra: Some(roomname),
+                    });
+
                     None
                 }
 
@@ -253,6 +361,7 @@ pub async fn procesar_json(
                     info!("Se solicita la lista de usuarios en la sala {}", roomname);
 
                     //Muestra el HashMap de la lista de los usuarios de dicha sala
+
                     None
                 }
 
@@ -310,13 +419,21 @@ mod test{
     use tokio::sync::{mpsc, Mutex};
     use std::sync::Arc;
 
+    //Para crear el estado de prueba y no escribir todo varias veces lol 
+    async fn setup_entorno() -> (
+        Arc<Mutex<EstadoServidor>>,
+        mpsc::UnboundedReceiver<MensajesDeSalida>,
+        mpsc::UnboundedSender<MensajesDeSalida>,
+    ) {
+        let estado = Arc::new(Mutex::new(EstadoServidor::nuevo()));
+        let (tx_cliente, rx_cliente) = mpsc::unbounded_channel();
+        (estado, rx_cliente, tx_cliente)
+    }
     //Si el destinatario no existe
     #[tokio::test] 
     async fn test_no_existe_usuario(){
-        let estado_mock = Arc::new(Mutex::new(EstadoServidor::nuevo()));
 
-        let (tx_cliente, _rx_cliente) = mpsc::unbounded_channel();
-        
+        let (estado, mut _rx, tx_cliente) = setup_entorno().await;
         let mut nombre_actual = Some("Aly".to_string());
         
         let linea_txt = r#"{"type": "TEXT", "username": "Bob", "text": "Hola Bob"}"#.to_string();
@@ -324,7 +441,7 @@ mod test{
         
         let respuesta = procesar_json(
             &linea_txt,
-            estado_mock.clone(),
+            estado.clone(),
             tx_cliente,
             &mut nombre_actual,
         ).await;
@@ -352,6 +469,7 @@ mod test{
             (tx_bob, EstadoUsuario::ACTIVE)
         );
 
+
         //Quien manda el msj
         let (tx_aly, _rx_aly) = mpsc::unbounded_channel();
         let mut nombre_aly = Some("Aly".to_string());
@@ -377,6 +495,210 @@ mod test{
         }
 
 
+    }
+
+    #[tokio::test]
+    async fn identify_exitoso() {
+        let (estado,mut _rx, tx_cliente) = setup_entorno()  .await;
+        let mut nombre_actual: Option<String> = None;
+        let nuevo_usuario = "Aly".to_string();
+
+        let mut memoria = estado.lock().await;
+
+        let respuesta = if memoria.usuarios.contains_key(&nuevo_usuario) {
+            Some(MensajesDeSalida::RESPONSE {
+                operation: Operacion::IDENTIFY,
+                resultado: ResultadoOperacion::USER_ALREADY_EXISTS,
+                extra: Some(nuevo_usuario.clone()),
+            })
+        }else {
+            memoria.usuarios.insert(
+                nuevo_usuario.clone(),
+                (tx_cliente.clone(), EstadoUsuario::ACTIVE),
+            );
+            nombre_actual = Some(nuevo_usuario.clone());
+
+            Some(MensajesDeSalida::RESPONSE {
+                operation: Operacion::IDENTIFY,
+                resultado: ResultadoOperacion::SUCCESS,
+                extra: Some(nuevo_usuario),
+            })
+        };
+
+        assert_eq!(nombre_actual, Some("Aly".to_string()), "El nombre actual debió actualizarse");
+        assert!(memoria.usuarios.contains_key("Aly"), "El usuario debió guardarse en el HashMap");
+
+        match respuesta {
+            Some(MensajesDeSalida::RESPONSE { resultado, ..}) => {
+                assert_eq!(resultado, ResultadoOperacion::SUCCESS, "La operación debió ser exitosa");
+            },
+            _ => panic!("Respuesta incorrecta por parte del IDENTIFY"),
+        }
+    }
+
+    #[tokio::test]
+    async fn new_room_exitoso(){
+        let (estado, _ , _) = setup_entorno().await;
+        let nombre_actual = Some("Aly".to_string());
+        let room_name = "Sala_Prueba".to_string();
+
+        let emisor = nombre_actual.unwrap();
+        let mut memoria = estado.lock().await;
+
+        let _respuesta = if memoria.salas.contains_key(&room_name) {
+            None
+        }else {
+            let mut miembros_iniciales = std::collections::HashSet::new();
+            miembros_iniciales.insert(emisor.clone());
+
+            let sala_nueva = Salas {
+                dueno_sala: emisor.clone(),
+                miembros: miembros_iniciales,
+                invitados: std::collections::HashSet::new(),
+            };
+
+            memoria.salas.insert(
+                room_name.clone(),
+                sala_nueva,
+            );
+
+            Some(MensajesDeSalida::RESPONSE {
+                operation: Operacion::NEW_ROOM,
+                resultado: ResultadoOperacion::SUCCESS,
+                extra: Some(room_name.clone()),
+            })
+        };
+
+        //Verifiaciones
+        assert!(memoria.salas.contains_key("Sala_Prueba"), "La sala debió crearse en la memoria");
+
+        let sala_creada = memoria.salas.get("Sala_Prueba").unwrap();
+        assert_eq!(sala_creada.dueno_sala, ("Aly"), "El dueño debe de ser el emisor");
+        assert!(sala_creada.miembros.contains("Aly"), "El emisor debe de estar en los miembros");
+        assert!(sala_creada.invitados.is_empty(), "La sala de invitados debe de esstar vacia");
+    }
+
+    #[tokio::test]
+    async fn join_room_exitoso() {
+        let (estado, mut _rx, tx_cliente) = setup_entorno().await;
+        let nombre_actual = Some("Bob".to_string());
+        let roomname = "Sala_Prueba".to_string();
+        let emisor = nombre_actual.unwrap();
+        let mut memoria = estado.lock().await;
+
+
+        { //Creamos la sala y poemos al buen BOB en la sala de invitados
+            memoria.usuarios.insert(emisor.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
+
+            let mut miembros = std::collections::HashSet::new();
+            miembros.insert("Aly".to_string()); // Dueño de la sala
+
+            let mut invitados = std::collections::HashSet::new();
+            invitados.insert(emisor.clone()); // Bob está invitado
+
+            memoria.salas.insert(roomname.clone(), Salas {
+                dueno_sala: "Aly".to_string(),
+                miembros,
+                invitados,
+            });
+        }
+
+        let respuesta_generada = {
+            let EstadoServidor { ref usuarios, ref mut salas } = *memoria;
+
+            let sala = salas.get_mut(&roomname).unwrap();
+
+            if !sala.invitados.contains(&emisor){
+                Some(MensajesDeSalida::RESPONSE {
+                    operation: Operacion::JOIN_ROOM,
+                    resultado: ResultadoOperacion::NOT_INVITED,
+                    extra: Some(roomname.clone()),
+                })
+            }else {
+                sala.invitados.remove(&emisor);
+                sala.miembros.insert(emisor.clone());
+
+                let msj_emisor = MensajesDeSalida::JOINED_ROOM {
+                    roomname: roomname.clone(),
+                    username: emisor.clone(),
+                };
+
+                for miembro in &sala.miembros{
+                    if let Some((tx_destino, _)) = usuarios.get(miembro){
+                        let _ = tx_destino.send(msj_emisor.clone());
+                    }
+                }
+
+                Some(MensajesDeSalida::RESPONSE {
+                    operation: Operacion::JOIN_ROOM,
+                    resultado: ResultadoOperacion::SUCCESS,
+                    extra: Some(roomname.clone()),
+                })
+
+            }
+        };
+
+
+        let sala_actualizada = memoria.salas.get("Sala_Prueba").unwrap();
+
+        assert!(sala_actualizada.miembros.contains("Bob"), "Bob, debió ser agregado correctamente");
+        assert!(!sala_actualizada.invitados.contains("Bob"), "Bob ya no debe de aparece en invitados");
+
+        match respuesta_generada {
+            Some(MensajesDeSalida::RESPONSE { resultado, .. }) => {
+                assert_eq!(resultado, ResultadoOperacion::SUCCESS, "La operacion debió devolver SUCCESS");
+            },
+            _ => panic!("Respuesta equivocada para un SUCCESS"),
+        }
+
+    }
+
+    #[tokio::test]
+    async fn joinroom_no_invitado() {
+        let (estado, _, tx_cliente) = setup_entorno().await;
+        let emisor = "Charlie".to_string();
+        let roomname = "Sala_Prueba".to_string();
+
+        {
+            let mut memoria = estado.lock().await;
+            memoria.usuarios.insert(emisor.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
+            
+            let mut miembros = std::collections::HashSet::new();
+            miembros.insert("Aly".to_string());
+
+            memoria.salas.insert(roomname.clone(), Salas {
+                dueno_sala: "Aly".to_string(),
+                miembros,
+                invitados: std::collections::HashSet::new(),
+            });
+        }
+
+        let mut memoria = estado.lock().await;
+        let EstadoServidor {ref mut salas, .. } = *memoria;
+
+        let respuesta = if let Some(salas) = salas.get_mut(&roomname) {
+            if !salas.invitados.contains(&emisor) {
+                Some(MensajesDeSalida::RESPONSE {
+                    operation: Operacion::JOIN_ROOM,
+                    resultado: ResultadoOperacion::NOT_INVITED,
+                    extra: Some(roomname.clone()),
+                })
+            }else {
+                None
+            }
+        }else {
+            None
+        };
+
+        let sala_actual = memoria.salas.get("Sala_Prueba").unwrap();
+        assert!(!sala_actual.miembros.contains("Charlie"), "Charlie NO debió entrar a los miembros");
+
+        match respuesta {
+            Some(MensajesDeSalida::RESPONSE {resultado, .. }) => {
+                assert_eq!(resultado, ResultadoOperacion::NOT_INVITED, "El server debe de rechazar dicha peticion");
+            }
+            _ => panic!("El server debe de detectar que el usuario no estaba invitado"),
+        }
     }
 
 }
