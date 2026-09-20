@@ -96,6 +96,7 @@ pub enum ResultadoOperacion{
     NO_SUCH_USER,
     NOT_IDENTIFIED,
     INVALID,
+    
 
     NEW_ROOM,
     ROOM_ALREADY_EXISTS,
