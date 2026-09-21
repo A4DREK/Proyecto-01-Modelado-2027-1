@@ -1,10 +1,13 @@
-use crate::estado::{EstadoServidor};
-    use super::*;
+#[cfg(test)]
+mod tests {
+    use crate::estado::{EstadoServidor};
+    use crate::protocolo::*;
+    use crate::estado::Salas;
+    use crate::{usuarios, salas, manejador}; 
     use tokio::sync::{mpsc, Mutex};
-    use core::panic;
-use std::sync::Arc;
+    use std::sync::Arc;
 
-    //Para crear el estado de prueba y no escribir todo varias veces lol 
+    // Para crear el estado de prueba
     async fn setup_entorno() -> (
         Arc<Mutex<EstadoServidor>>,
         mpsc::UnboundedReceiver<MensajesDeSalida>,
@@ -68,15 +71,12 @@ use std::sync::Arc;
     ) {
         let mut memoria = estado.lock().await;
         
-        // Registramos a ambos usuarios en el server
         memoria.usuarios.insert(dueno.to_string(), (tx_dueno, EstadoUsuario::ACTIVE));
         memoria.usuarios.insert(invitado.to_string(), (tx_invitado, EstadoUsuario::ACTIVE));
 
-        // El dueño va a miembros
         let mut miembros = std::collections::HashSet::new();
         miembros.insert(dueno.to_string());
 
-        // El invitado va a la lista de espera
         let mut invitados = std::collections::HashSet::new();
         invitados.insert(invitado.to_string());
 
@@ -87,17 +87,15 @@ use std::sync::Arc;
         });
     }
 
-    //Si el destinatario no existe
+    //Inicio de los test, lo de arriba son fn auxiliares porque sí, viva la programación estructurada
     #[tokio::test] 
     async fn test_no_existe_usuario(){
-
         let (estado, mut _rx, tx_cliente) = setup_entorno().await;
         let mut nombre_actual = Some("Aly".to_string());
         
         let linea_txt = r#"{"type": "TEXT", "username": "Bob", "text": "Hola Bob"}"#.to_string();
-
         
-        let respuesta = procesar_json(
+        let respuesta = manejador::procesar_json(
             &linea_txt,
             estado.clone(),
             tx_cliente,
@@ -110,33 +108,27 @@ use std::sync::Arc;
                 assert_eq!(resultado, ResultadoOperacion::NO_SUCH_USER);
                 assert_eq!(extra, Some("Bob".to_string()));
             }
-            _ => {
-                panic!("Se espera un NO_SUCH_USER como respuesta")
-            }
+            _ => panic!("Se espera un NO_SUCH_USER como respuesta")
         }
     }
 
     #[tokio::test]
     async fn test_texto_bien(){
-        let estado_mock = Arc::new(Mutex::new(EstadoServidor::nuevo()));
+        let (estado, mut _rx, tx_aly) = setup_entorno().await;
+        
+        // Setup Bob
+        let (tx_bob, mut rx_bob) = mpsc::unbounded_channel();
+        {
+            let mut memoria = estado.lock().await;
+            memoria.usuarios.insert("Bob".to_string(), (tx_bob, EstadoUsuario::ACTIVE));
+        }
 
-        //Destino
-        let (tx_bob,  mut rx_bob) = mpsc::unbounded_channel();
-        estado_mock.lock().await.usuarios.insert(
-            "Bob".to_string(),
-            (tx_bob, EstadoUsuario::ACTIVE)
-        );
-
-
-        //Quien manda el msj
-        let (tx_aly, _rx_aly) = mpsc::unbounded_channel();
         let mut nombre_aly = Some("Aly".to_string());
         let msj_entrada = r#"{"type": "TEXT", "username": "Bob", "text": "Hola, Bob"}"#.to_string();
 
-
-        let respuesta = procesar_json(
+        let respuesta = manejador::procesar_json(
             &msj_entrada,
-            estado_mock,
+            estado.clone(),
             tx_aly,
             &mut nombre_aly,
         ).await;
@@ -151,39 +143,19 @@ use std::sync::Arc;
             }
             _ => panic!("Bob debió recibir un TEXT_FROM"),
         }
-
-
     }
 
     #[tokio::test]
     async fn identify_exitoso() {
-        let (estado,mut _rx, tx_cliente) = setup_entorno()  .await;
+        let (estado, mut _rx, tx_cliente) = setup_entorno().await;
         let mut nombre_actual: Option<String> = None;
         let nuevo_usuario = "Aly".to_string();
 
-        let mut memoria = estado.lock().await;
-
-        let respuesta = if memoria.usuarios.contains_key(&nuevo_usuario) {
-            Some(MensajesDeSalida::RESPONSE {
-                operation: Operacion::IDENTIFY,
-                resultado: ResultadoOperacion::USER_ALREADY_EXISTS,
-                extra: Some(nuevo_usuario.clone()),
-            })
-        }else {
-            memoria.usuarios.insert(
-                nuevo_usuario.clone(),
-                (tx_cliente.clone(), EstadoUsuario::ACTIVE),
-            );
-            nombre_actual = Some(nuevo_usuario.clone());
-
-            Some(MensajesDeSalida::RESPONSE {
-                operation: Operacion::IDENTIFY,
-                resultado: ResultadoOperacion::SUCCESS,
-                extra: Some(nuevo_usuario),
-            })
-        };
+        let respuesta = usuarios::procesar_identify(&estado, &mut nombre_actual, nuevo_usuario, tx_cliente).await;
 
         assert_eq!(nombre_actual, Some("Aly".to_string()), "El nombre actual debió actualizarse");
+        
+        let memoria = estado.lock().await;
         assert!(memoria.usuarios.contains_key("Aly"), "El usuario debió guardarse en el HashMap");
 
         match respuesta {
@@ -197,143 +169,65 @@ use std::sync::Arc;
     #[tokio::test]
     async fn new_room_exitoso(){
         let (estado, _ , _) = setup_entorno().await;
-        let nombre_actual = Some("Aly".to_string());
+        let emisor = "Aly".to_string();
         let room_name = "Sala_Prueba".to_string();
 
-        let emisor = nombre_actual.unwrap();
-        let mut memoria = estado.lock().await;
+        let respuesta = salas::procesar_new_room(&estado, room_name.clone(), emisor).await;
 
-        let _respuesta = if memoria.salas.contains_key(&room_name) {
-            None
-        }else {
-            let mut miembros_iniciales = std::collections::HashSet::new();
-            miembros_iniciales.insert(emisor.clone());
-
-            let sala_nueva = Salas {
-                dueno_sala: emisor.clone(),
-                miembros: miembros_iniciales,
-                invitados: std::collections::HashSet::new(),
-            };
-
-            memoria.salas.insert(
-                room_name.clone(),
-                sala_nueva,
-            );
-
-            Some(MensajesDeSalida::RESPONSE {
-                operation: Operacion::NEW_ROOM,
-                resultado: ResultadoOperacion::SUCCESS,
-                extra: Some(room_name.clone()),
-            })
-        };
-
-        //Verifiaciones
+        let memoria = estado.lock().await;
         assert!(memoria.salas.contains_key("Sala_Prueba"), "La sala debió crearse en la memoria");
 
         let sala_creada = memoria.salas.get("Sala_Prueba").unwrap();
-        assert_eq!(sala_creada.dueno_sala, ("Aly"), "El dueño debe de ser el emisor");
+        assert_eq!(sala_creada.dueno_sala, "Aly", "El dueño debe de ser el emisor");
         assert!(sala_creada.miembros.contains("Aly"), "El emisor debe de estar en los miembros");
-        assert!(sala_creada.invitados.is_empty(), "La sala de invitados debe de esstar vacia");
+        assert!(sala_creada.invitados.is_empty(), "La sala de invitados debe estar vacia");
+
+        match respuesta {
+            Some(MensajesDeSalida::RESPONSE { resultado, ..}) => {
+                assert_eq!(resultado, ResultadoOperacion::SUCCESS, "La operación debió ser exitosa");
+            },
+            _ => panic!("Respuesta incorrecta por parte del NEW_ROOM"),
+        }
     }
 
     #[tokio::test]
     async fn join_room_exitoso() {
         let (estado, mut _rx, tx_cliente) = setup_entorno().await;
-        let nombre_actual = Some("Bob".to_string());
+        let emisor = "Bob".to_string();
         let roomname = "Sala_Prueba".to_string();
-        let emisor = nombre_actual.unwrap();
-        let mut memoria = estado.lock().await;
         let (tx_aly, _rx_aly) = tokio::sync::mpsc::unbounded_channel();
-
-        //cambiar est 
-        //Creamos la sala y poemos al buen BOB en la sala de invitados
 
         setup_sala_con_invitado(&estado, &roomname, "Aly", tx_aly, &emisor, tx_cliente).await;
 
-        let respuesta_generada = {
-            let EstadoServidor { ref usuarios, ref mut salas } = *memoria;
+        let respuesta = salas::procesar_join_room(&estado, roomname, emisor).await;
 
-            let sala = salas.get_mut(&roomname).unwrap();
-
-            if !sala.invitados.contains(&emisor){
-                Some(MensajesDeSalida::RESPONSE {
-                    operation: Operacion::JOIN_ROOM,
-                    resultado: ResultadoOperacion::NOT_INVITED,
-                    extra: Some(roomname.clone()),
-                })
-            }else {
-                sala.invitados.remove(&emisor);
-                sala.miembros.insert(emisor.clone());
-
-                let msj_emisor = MensajesDeSalida::JOINED_ROOM {
-                    roomname: roomname.clone(),
-                    username: emisor.clone(),
-                };
-
-                for miembro in &sala.miembros{
-                    if let Some((tx_destino, _)) = usuarios.get(miembro){
-                        let _ = tx_destino.send(msj_emisor.clone());
-                    }
-                }
-
-                Some(MensajesDeSalida::RESPONSE {
-                    operation: Operacion::JOIN_ROOM,
-                    resultado: ResultadoOperacion::SUCCESS,
-                    extra: Some(roomname.clone()),
-                })
-
-            }
-        };
-
-
+        let memoria = estado.lock().await;
         let sala_actualizada = memoria.salas.get("Sala_Prueba").unwrap();
 
         assert!(sala_actualizada.miembros.contains("Bob"), "Bob, debió ser agregado correctamente");
         assert!(!sala_actualizada.invitados.contains("Bob"), "Bob ya no debe de aparece en invitados");
 
-        match respuesta_generada {
+        match respuesta {
             Some(MensajesDeSalida::RESPONSE { resultado, .. }) => {
                 assert_eq!(resultado, ResultadoOperacion::SUCCESS, "La operacion debió devolver SUCCESS");
             },
             _ => panic!("Respuesta equivocada para un SUCCESS"),
         }
-
     }
 
     #[tokio::test]
     async fn joinroom_no_invitado() {
-        let (estado, _, tx_cliente) = setup_entorno().await;
+        let (estado, _, _tx_cliente) = setup_entorno().await;
         let (tx_aly, _rx_aly) = tokio::sync::mpsc::unbounded_channel();
         let emisor = "Charlie".to_string();
         let roomname = "Sala_Prueba".to_string();
 
-//cambiar esto
-
         setup_sala_un_usuario(&estado, &roomname, "Aly", tx_aly).await;
 
-        {
-            let mut memoria = estado.lock().await;
-            memoria.usuarios.insert(emisor.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
-            
-        }
+        // Llamamos al módulo (Charlie NO fue invitado)
+        let respuesta = salas::procesar_join_room(&estado, roomname, emisor).await;
 
-        let mut memoria = estado.lock().await;
-        let EstadoServidor {ref mut salas, .. } = *memoria;
-
-        let respuesta = if let Some(salas) = salas.get_mut(&roomname) {
-            if !salas.invitados.contains(&emisor) {
-                Some(MensajesDeSalida::RESPONSE {
-                    operation: Operacion::JOIN_ROOM,
-                    resultado: ResultadoOperacion::NOT_INVITED,
-                    extra: Some(roomname.clone()),
-                })
-            }else {
-                None
-            }
-        }else {
-            None
-        };
-
+        let memoria = estado.lock().await;
         let sala_actual = memoria.salas.get("Sala_Prueba").unwrap();
         assert!(!sala_actual.miembros.contains("Charlie"), "Charlie NO debió entrar a los miembros");
 
@@ -352,8 +246,6 @@ use std::sync::Arc;
         let otro_usuario = "Bob".to_string();
         let roomname = "Sala_Prueba".to_string();
 
-        //cambiar esto
-
         setup_sala_dos_usuarios(
             &estado, 
             &roomname,
@@ -362,37 +254,10 @@ use std::sync::Arc;
             &otro_usuario,
             tx_cliente.clone()).await;
 
-
-        let memoria = estado.lock().await;
-
-        let respuesta = {
-            let EstadoServidor { ref usuarios, ref salas } = *memoria;
-
-            let sala = salas.get(&roomname).unwrap();
-
-            if !sala.miembros.contains(&emisor){
-                Some(MensajesDeSalida::RESPONSE {
-                    operation: Operacion::ROOM_USERS,
-                    resultado: ResultadoOperacion::NOT_JOINED,
-                    extra: Some(roomname.clone()),
-                })
-            }else {
-                let mut diccionario_usuarios = std::collections::HashMap::new();
-                for miembro in &sala.miembros {
-                    if let Some((_tx, estado_usuario)) = usuarios.get(miembro){
-                        diccionario_usuarios.insert(miembro.clone(), format!("{:?}", estado_usuario ));
-                    }
-                }
-
-                Some(MensajesDeSalida::ROOM_USER_LIST {
-                    roomname: roomname.clone(),
-                    users: diccionario_usuarios,
-                })
-            }
-        };
+        // Llamamos al módulo
+        let respuesta = salas::procesar_room_users(&estado, roomname, emisor).await;
 
         match respuesta {
-
             Some(MensajesDeSalida::ROOM_USER_LIST { roomname: resp_room, users }) => {
                 assert_eq!(resp_room, "Sala_Prueba", "El nombre de la sala debe coincidir");
                 assert_eq!(users.len(), 2, "Deben aparecer exactamente 2 usuarios en la lista");
@@ -409,49 +274,16 @@ use std::sync::Arc;
         let emisor = "Charlie".to_string();
         let roomname = "Sala_Prueba".to_string();
 
-        //Una sala solita con 1 miembro
-        {
-            let mut memoria = estado.lock().await;
-            memoria.usuarios.insert(emisor.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
+        setup_sala_un_usuario(&estado, &roomname, "Aly", tx_cliente).await;
 
-            let mut miembros = std::collections::HashSet::new();
-            miembros.insert("Aly".to_string()); 
-
-            memoria.salas.insert(roomname.clone(), Salas {
-                dueno_sala: "Aly".to_string(),
-                miembros,
-                invitados: std::collections::HashSet::new(),
-            });
-        }
-
-        let memoria = estado.lock().await;
-        let respuesta = {
-            let EstadoServidor { ref salas, .. } = *memoria;
-
-            if let Some(sala) = salas.get(&roomname) {
-                if !sala.miembros.contains(&emisor){
-                    Some(MensajesDeSalida::RESPONSE {
-                        operation: Operacion::ROOM_USERS,
-                        resultado: ResultadoOperacion::NOT_JOINED,
-                        extra: Some(roomname.clone()),
-                    })
-                }else {
-                    None
-                }
-            }else {
-                None
-            }
-        };
+        
+        let respuesta = salas::procesar_room_users(&estado, roomname, emisor).await;
 
         match respuesta {
             Some(MensajesDeSalida::RESPONSE {resultado, .. }) => {
-                assert_eq!(
-                    resultado,
-                    ResultadoOperacion::NOT_JOINED,
-                    "El server debe de bloquear a Charlie con NOT_JOINED por metiche"
-                );
+                assert_eq!(resultado, ResultadoOperacion::NOT_JOINED, "Debe rechazar a Charlie");
             },
-            _ => panic!("El server no detectó al metiche de Cahrlie")
+            _ => panic!("El server no detectó al metiche de Charlie")
         }
     }
 
@@ -459,54 +291,19 @@ use std::sync::Arc;
     async fn test_text_room_exitoso() {
         let (estado, _, tx_emisor) = setup_entorno().await;
         let emisor = "Aly".to_string();
-        let roomname = "Sala_Prueba";
+        let roomname = "Sala_Prueba".to_string();
         let txt_enviado = "Muy buenas".to_string();
 
         let (tx_bob, mut rx_bob) = mpsc::unbounded_channel();
 
-        //cambiar esto 
-        //Una sala con Aly y Bob
+        setup_sala_dos_usuarios(&estado, &roomname, "Aly", tx_emisor, "Bob", tx_bob).await;
 
-        setup_sala_dos_usuarios(&estado, roomname, "Aly", tx_emisor, "Bob", tx_bob).await;
+        let respuesta = salas::procesar_room_text(&estado, roomname, txt_enviado, emisor).await;
 
-
-        let memoria = estado.lock().await;
-
-        let respuesta = {
-            let EstadoServidor { ref usuarios, ref salas } = *memoria;
-            let sala = salas.get(roomname).unwrap();
-            
-            //Si no está en la sala
-            if !sala.miembros.contains(&emisor) {
-                Some(MensajesDeSalida::RESPONSE {
-                    operation: Operacion::ROOM_TEXT,
-                    resultado: ResultadoOperacion::NOT_JOINED,
-                    extra: Some(roomname.to_string()),
-                })
-            }else {
-                let msj_sala = MensajesDeSalida::ROOM_TEXT_FROM {
-                    roomname: roomname.to_string(),
-                    username: emisor.clone(),
-                    text: txt_enviado,
-                };
-
-                for miembro in &sala.miembros {
-                    if miembro != &emisor {
-                        if let Some((tx_destino, _)) = usuarios.get(miembro) {
-                            let _ = tx_destino.send(msj_sala.clone());
-                        }
-                    }
-                }
-                None
-            }
-        };
-        drop(memoria);
-
-        //Inicio de las verificaciones 
-
-        //Esta parte tengo dudas pqqqqq según yo sí debe de mandar algo al emisor del msj que mandó no? o no? 
+        // El server NO responde al emisor
         assert!(respuesta.is_none(), "El server no debe de responder al emisor");
 
+        // Verificamos el canal del receptor (Bob)
         let msj_bob = rx_bob.try_recv().expect("Bob debe de recibir el msj de la sala");
         match msj_bob {
             MensajesDeSalida::ROOM_TEXT_FROM { roomname: r, username: u, text: t } => {
@@ -514,49 +311,26 @@ use std::sync::Arc;
                 assert_eq!(u, "Aly", "El msj debe de indicar que Aly lo envió");
                 assert_eq!(t, "Muy buenas");
             },
-            _ => panic!("Bob tiene esquizofrenia y recibió un msj que no era"),
+            _ => panic!("Bob recibió un mensaje distinto"),
         }
-
     }
 
     #[tokio::test]
     async fn test_text_room_no_exitoso(){
         let (estado, _, tx_cliente) = setup_entorno().await;
-        let roomname = "Sala_Prueba";
+        let roomname = "Sala_Prueba".to_string();
         let emisor = "Charlie".to_string();
+        let txt = "Mensaje pirata".to_string();
 
-        setup_sala_un_usuario(&estado, roomname, "Aly", tx_cliente).await;
+        setup_sala_un_usuario(&estado, &roomname, "Aly", tx_cliente).await;
 
-        let memoria = estado.lock().await;
-        let respuesta = {
-            let EstadoServidor {ref salas, ..  } = *memoria;
-
-            if let Some(sala) = salas.get(roomname){
-                if !sala.miembros.contains(&emisor) {
-                    Some(MensajesDeSalida::RESPONSE { 
-                        operation: Operacion::ROOM_TEXT,
-                        resultado: ResultadoOperacion::NOT_JOINED,
-                        extra: Some(roomname.to_string()),
-                    })
-                }else {
-                    None
-                }
-            }else {
-                None
-            }
-        };
-
-        drop(memoria);
+        let respuesta = salas::procesar_room_text(&estado, roomname, txt, emisor).await;
 
         match respuesta {
             Some(MensajesDeSalida::RESPONSE { resultado, .. }) => {
-                assert_eq!(
-                    resultado,
-                    ResultadoOperacion::NOT_JOINED,
-                    "El server debe de bloquear al metiche de Charlie con Not NOT_JOINED"
-                );
+                assert_eq!(resultado, ResultadoOperacion::NOT_JOINED, "Debe rechazar a Charlie");
             },
-            _ => panic!("El server recibió la operación"),
+            _ => panic!("El server no bloqueó el envío de Charlie"),
         }
-        
     }
+}
