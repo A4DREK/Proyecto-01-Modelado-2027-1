@@ -4,8 +4,8 @@ pub use new_room::procesar as procesar_new_room;
 pub mod invite;
 pub use invite::procesar as procesar_invite;
 
-pub mod join_room;
-pub use join_room::procesar as procesar_join_room;
+pub mod joined_room;
+pub use joined_room::procesar as procesar_join_room;
 
 pub mod room_users;
 pub use room_users::procesar as procesar_room_users;

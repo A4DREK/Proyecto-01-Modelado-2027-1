@@ -1,5 +1,5 @@
 use crate::protocolo::*;
-use crate::EstadoServidor;
+use crate::estado::EstadoServidor;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 

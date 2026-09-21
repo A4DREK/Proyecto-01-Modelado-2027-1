@@ -1,5 +1,5 @@
 use crate::protocolo::*;
-use crate::EstadoServidor;
+use crate::estado::EstadoServidor;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -17,7 +17,7 @@ pub async fn procesar(
         Some(s) => s,
         None => {
             return Some(MensajesDeSalida::RESPONSE {
-                operation: Operacion::JOIN_ROOM,
+                operation: Operacion::JOINED_ROOM,
                 resultado: ResultadoOperacion::NO_SUCH_ROOM,
                 extra: Some(roomname),
             })
@@ -27,7 +27,7 @@ pub async fn procesar(
     //validar que el usuario haya sido invitado
     if !sala.invitados.contains(&emisor){
         return Some(MensajesDeSalida::RESPONSE {
-            operation: Operacion::JOIN_ROOM,
+            operation: Operacion::JOINED_ROOM,
             resultado: ResultadoOperacion::NOT_INVITED,
             extra: Some(roomname),
         })
@@ -49,7 +49,7 @@ pub async fn procesar(
     }
 
     Some(MensajesDeSalida::RESPONSE {
-        operation: Operacion::JOIN_ROOM,
+        operation: Operacion::JOINED_ROOM,
         resultado: ResultadoOperacion::SUCCESS,
         extra: Some(roomname),
     })

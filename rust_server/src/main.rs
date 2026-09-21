@@ -1,13 +1,6 @@
 //Código robado de https://github.com/dheerajgopi/nimblecache/tree/blog-1
-
-pub mod usuarios; 
-pub mod salas;
-mod server;
-mod manejador;
-mod protocolo;
-mod estado;
-
-use crate::{estado::EstadoServidor, server::Server};
+use rust_server::estado::EstadoServidor;
+use rust_server::server::Server;
 use clap::Parser;
 use tokio::sync::Mutex;
 use log::info;
