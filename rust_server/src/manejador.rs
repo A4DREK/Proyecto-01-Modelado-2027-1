@@ -457,7 +457,7 @@ fn verificar_usuario(nombre_actual: &mut Option<String>) -> Result<String, Mensa
 
 #[cfg(test)]
 mod test{
-    use crate::estado::EstadoServidor;
+    use crate::estado::{EstadoServidor};
     use super::*;
     use tokio::sync::{mpsc, Mutex};
     use std::sync::Arc;
@@ -744,4 +744,121 @@ mod test{
         }
     }
 
+    #[tokio::test]
+    async fn test_room_users(){
+        let (estado, _, tx_cliente) = setup_entorno().await;
+        let emisor = "Aly".to_string();
+        let otro_usuario = "Bob".to_string();
+        let roomname = "Sala_Prueba".to_string();
+
+        {
+        
+            let mut memoria = estado.lock().await;
+            memoria.usuarios.insert(emisor.clone(), (tx_cliente.clone(), EstadoUsuario::ACTIVE));
+            memoria.usuarios.insert(otro_usuario.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
+
+            let mut miembros = std::collections::HashSet::new();
+            miembros.insert(emisor.clone());
+            miembros.insert(otro_usuario.clone());
+
+            memoria.salas.insert(roomname.clone(), Salas {
+                dueno_sala: emisor.clone(),
+                miembros,
+                invitados: std::collections::HashSet::new(),
+            });
+
+        }
+
+        let memoria = estado.lock().await;
+
+        let respuesta = {
+            let EstadoServidor { ref usuarios, ref salas } = *memoria;
+
+            let sala = salas.get(&roomname).unwrap();
+
+            if !sala.miembros.contains(&emisor){
+                Some(MensajesDeSalida::RESPONSE {
+                    operation: Operacion::ROOM_USERS,
+                    resultado: ResultadoOperacion::NOT_JOINED,
+                    extra: Some(roomname.clone()),
+                })
+            }else {
+                let mut diccionario_usuarios = std::collections::HashMap::new();
+                for miembro in &sala.miembros {
+                    if let Some((_tx, estado_usuario)) = usuarios.get(miembro){
+                        diccionario_usuarios.insert(miembro.clone(), format!("{:?}", estado_usuario ));
+                    }
+                }
+
+                Some(MensajesDeSalida::ROOM_USER_LIST {
+                    roomname: roomname.clone(),
+                    users: diccionario_usuarios,
+                })
+            }
+        };
+
+        match respuesta {
+
+            Some(MensajesDeSalida::ROOM_USER_LIST { roomname: resp_room, users }) => {
+                assert_eq!(resp_room, "Sala_Prueba", "El nombre de la sala debe coincidir");
+                assert_eq!(users.len(), 2, "Deben aparecer exactamente 2 usuarios en la lista");
+                assert_eq!(users.get("Aly").unwrap(), "ACTIVE", "Aly debe tener estado ACTIVE");
+                assert_eq!(users.get("Bob").unwrap(), "ACTIVE", "Bob debe tener estado ACTIVE");
+            },
+            _ => panic!("La operación debió devolver la variante ROOM_USER_LIST con el diccionario"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_room_users_rechazo () {
+        let (estado, _, tx_cliente) = setup_entorno().await;
+        let emisor = "Charlie".to_string();
+        let roomname = "Sala_Prueba".to_string();
+
+        //Una sala solita con 1 miembro
+        {
+            let mut memoria = estado.lock().await;
+            memoria.usuarios.insert(emisor.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
+
+            let mut miembros = std::collections::HashSet::new();
+            miembros.insert("Aly".to_string()); 
+
+            memoria.salas.insert(roomname.clone(), Salas {
+                dueno_sala: "Aly".to_string(),
+                miembros,
+                invitados: std::collections::HashSet::new(),
+            });
+        }
+
+        let memoria = estado.lock().await;
+        let respuesta = {
+            let EstadoServidor { ref salas, .. } = *memoria;
+
+            if let Some(sala) = salas.get(&roomname) {
+                if !sala.miembros.contains(&emisor){
+                    Some(MensajesDeSalida::RESPONSE {
+                        operation: Operacion::ROOM_USERS,
+                        resultado: ResultadoOperacion::NOT_JOINED,
+                        extra: Some(roomname.clone()),
+                    })
+                }else {
+                    None
+                }
+            }else {
+                None
+            }
+        };
+
+        match respuesta {
+            Some(MensajesDeSalida::RESPONSE {resultado, .. }) => {
+                assert_eq!(
+                    resultado,
+                    ResultadoOperacion::NOT_JOINED,
+                    "El server debe de bloquear a Charlie con NOT_JOINED por metiche"
+                );
+            },
+            _ => panic!("El server no detectó al metiche de Cahrlie")
+        }
+    }
 }
+
