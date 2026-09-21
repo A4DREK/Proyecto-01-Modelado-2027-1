@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-
-//Ahorita solo serán los mensajes de entrada, a un no muestra nda de msj de salida
 use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion, EstadoUsuario};
 use crate::estado::{EstadoCompartido, Salas, Transmisor, EstadoServidor};
+use crate::usuarios;
+
 use log::{info, error};
 
 pub async fn procesar_json(
@@ -21,178 +21,42 @@ pub async fn procesar_json(
                 //Inicia a checar que parte del comando del JSON
                 MensajesDeEntrada::IDENTIFY{username: nuevo_usuario} => {
                     info!("Nombre del cliente: {}", nuevo_usuario);
-
-                    //Modificador de la memoria
-                    let mut memoria =  estado.lock().await;
-
-                    //Ver si el nombre no existe
-                    if memoria.usuarios.contains_key(&nuevo_usuario){
-                        return Some(MensajesDeSalida::RESPONSE {
-                            operation: Operacion::IDENTIFY,
-                            resultado: ResultadoOperacion::USER_ALREADY_EXISTS,
-                            extra: Some(nuevo_usuario),
-                        });
-                    }
-
-                    let msj_notificacion = MensajesDeSalida::NEW_USER {
-                        username: nuevo_usuario.clone(), 
-                    };
-
-                    for(_nombre, (tx_destino, _estado)) in memoria.usuarios.iter(){
-                        let _ = tx_destino.send(msj_notificacion.clone());
-                    }
-
-                    //Si no existe 
-                    memoria.usuarios.insert(
-                        nuevo_usuario.clone(),
-                        (tx_cliente.clone(),EstadoUsuario::ACTIVE )
-                    );
-
-                    *nombre_actual = Some(nuevo_usuario.clone());
-                    
-
-                    //Retorno del mensaje
-                    Some(MensajesDeSalida::RESPONSE {
-                        operation: Operacion::IDENTIFY,
-                        resultado: ResultadoOperacion::SUCCESS,
-                        extra: Some(nuevo_usuario),
-                    })
+                    usuarios::procesar_identify(&estado, nombre_actual, nuevo_usuario, tx_cliente.clone()).await
                 }
 
                 MensajesDeEntrada::STATUS { status: nuevo_estado } => {
                     info!("Cambio de estado del usuario a: {:?}", nuevo_estado);
+                    
                     //Aquí se debe de actualizar el estado en memoria y pasarlo a todos los usuarios
-
-                    //Memoria para buscar al usuario
-                    let mut memoria = estado.lock().await;
-
-                    //Se busca que esté identificó al usuario
-                    let emisor = match nombre_actual {
-                        //Si el nombre existe
-                        Some(nombre) => nombre.clone(),
-                        //Si no existe el nombre
-                        None => {
-                            return  Some(MensajesDeSalida::RESPONSE {
-                                operation: Operacion::INVALID,
-                                resultado: ResultadoOperacion::NOT_IDENTIFIED,
-                                extra: None,
-                            });
-                        }
-                    };
-
-                    if let Some((_tx, estado_actual)) = memoria.usuarios.get_mut(&emisor) {
-                        if *estado_actual != nuevo_estado {
-                            *estado_actual = nuevo_estado.clone();
-
-                            let msj_usuarios = MensajesDeSalida::NEW_STATUS {
-                                username: emisor.clone(),
-                                status: nuevo_estado,
-                            };
-
-                            for (nombre,(tx_destino, _)) in memoria.usuarios.iter(){
-                                if *nombre != emisor {
-                                    let _ = tx_destino.send(msj_usuarios.clone()); 
-                                }
-                            }
-                        }
-                    }
-
-                    None
+                    usuarios::procesar_status(&estado, &nombre_actual, nuevo_estado).await
                 }
 
                 MensajesDeEntrada::USERS => {
                     info!("Se solicita la lista de usuarios");
                     //LEER EL FKING HASH MAP Y DEVOLVER USER_LIST  
-                    let memoria = estado.lock().await;
-
                     let _emisor = match verificar_usuario(nombre_actual) {
                         Ok(nombre) => nombre,
                         Err(mensaje_error) => return Some(mensaje_error),
                     };
 
-                    let mut lista_usuarios :HashMap<String, String> = HashMap::new();
-
-                    for(nombre, (_tx, estado)) in memoria.usuarios.iter(){
-
-                        let estado_str = format!("{:?}", estado);
-                        lista_usuarios.insert(nombre.clone(), estado_str);
-                    }
-
-                    
-                    Some(MensajesDeSalida::USER_LIST {
-                        users: lista_usuarios,
-                    })
-
+                    usuarios::procesar_users(&estado).await
                 }
 
                 MensajesDeEntrada::TEXT { username: destinatario, text } => {
                     info!("Mensaje para {}: {}", destinatario, text );
                     //Buscar el socket del destinatario y devovler TEXT_FROM
                     
-                    let emisor = match nombre_actual {
-                        Some(nombre) => nombre.clone(),
-                        None => {
-                            error!("Un usuario no identificado quiere mandar un msj");
-                            return None;
-                        }
-                    };
-
-                    //Lector de la memoria 
-                    let memoria = estado.lock().await;
-
-                    //Buscamos al usuario que este en el HashMap 
-                    match memoria.usuarios.get(&destinatario) {
-                        Some((tx_destino, _estado)) => {
-
-                            let msj = MensajesDeSalida::TEXT_FROM {
-                                username: emisor,
-                                text: text.clone(), 
-                            };
-
-                            let _ = tx_destino.send(msj);
-
-                            None
-                        }
-                        None => {
-                            //Si el usuario no existe
-                            Some(MensajesDeSalida::RESPONSE {
-                                operation: Operacion::TEXT,
-                                resultado: ResultadoOperacion::NO_SUCH_USER,
-                                extra: Some(destinatario.clone()),
-                            })
-                        }
-                    }
-
+                    let emisor = obtener_emisor(nombre_actual)?;
+                    usuarios::procesar_text(&estado, emisor, destinatario, text).await
                 }
 
                 MensajesDeEntrada::PUBLIC_TEXT { text } => {
                     info!("Mensaje general: {}", text);
                     // Enviar el texto a todos los usuarios que esten en la red
-                    let emisor  = match nombre_actual {
-                        Some(nombre) => nombre.clone(),
-                        None => {
-                            error!("Un usuario no identificado quiere mandar un msj");
-                            return None;
-                        }
-                    };
+                    let emisor  = obtener_emisor(nombre_actual)?;
+                    usuarios::procesar_public_text(&estado, emisor, text).await
 
-                    //Lector de la memomria
-                    let memoria = estado.lock().await;
-
-                    //Manda el msj a todos menos al emisor, usa un for que aquí es un iterador
-                    for (destinatario, (tx_destino, _estado)) in memoria.usuarios.iter(){
-                        if destinatario != &emisor{
-                            let msj = MensajesDeSalida::PUBLIC_TEXT_FROM {
-                                username: emisor.clone(),
-                                text: text.clone(),
-                            };
-
-                            //Se manda el msj al otro usuario
-                            let _ = tx_destino.send(msj);
-                        }
-                    }
-
-                    None
+                    
                 }
 
                 MensajesDeEntrada::NEW_ROOM { roomname } => {
@@ -412,6 +276,52 @@ pub async fn procesar_json(
                     info!("Se manda un msj a la sala {}: {}", roomname, text);
 
                     //Enviar el texto a todos los usuarios de la sala
+                    let emisor: String = match verificar_usuario(nombre_actual) {
+                        Ok(nombre) => nombre,
+                        Err(e) => return Some(e),
+                    };
+
+                    let memoria = estado.lock().await;
+                    let EstadoServidor { ref usuarios, ref salas } = *memoria;
+
+                    //La sala existe?
+                    let sala = match salas.get(&roomname) {
+                        Some(s) => s,
+                        None => {
+                            return Some(MensajesDeSalida::RESPONSE {
+                                operation: Operacion::ROOM_TEXT,
+                                resultado: ResultadoOperacion::NO_SUCH_ROOM,
+                                extra: Some(roomname),
+                            });
+                        }
+                        
+                    };
+
+                    //Validar que el usuario esté en la sala
+                    if !sala.miembros.contains(&emisor){
+                        return Some(MensajesDeSalida::RESPONSE {
+                            operation: Operacion::ROOM_TEXT,
+                            resultado: ResultadoOperacion::NOT_JOINED,
+                            extra: Some(roomname.clone()),
+                        })
+                    }
+
+                    //Mensaje que se mandará a la sala
+                    let msj_sala = MensajesDeSalida::ROOM_TEXT_FROM {
+                        roomname: roomname.clone(),
+                        username: emisor.clone(),
+                        text,
+                    };
+
+                    for miembro in &sala.miembros {
+                        if miembro != &emisor {
+                            if let Some((tx_destino, _)) = usuarios.get(miembro) {
+                                let _ = tx_destino.send(msj_sala.clone());
+                            }
+                        }
+                    }
+
+
                     None
                 }
 
@@ -452,6 +362,16 @@ fn verificar_usuario(nombre_actual: &mut Option<String>) -> Result<String, Mensa
             resultado: ResultadoOperacion::INVALID,
             extra: None,
         }),
+    }
+}
+
+fn obtener_emisor(nombre_actual: &Option<String>) -> Option<String>{
+    match nombre_actual {
+        Some(nombre) => Some(nombre.clone()),
+        None => {
+            log::error!("Un usuario no identificado quiere mandar un msj");
+            None
+        }
     }
 }
 

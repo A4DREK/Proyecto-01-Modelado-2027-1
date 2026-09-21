@@ -1,7 +1,8 @@
 use crate::estado::{EstadoServidor};
     use super::*;
     use tokio::sync::{mpsc, Mutex};
-    use std::sync::Arc;
+    use core::panic;
+use std::sync::Arc;
 
     //Para crear el estado de prueba y no escribir todo varias veces lol 
     async fn setup_entorno() -> (
@@ -13,6 +14,79 @@ use crate::estado::{EstadoServidor};
         let (tx_cliente, rx_cliente) = mpsc::unbounded_channel();
         (estado, rx_cliente, tx_cliente)
     }
+
+    async fn setup_sala_un_usuario(
+        estado: &Arc<Mutex<EstadoServidor>>,
+        roomname: &str,
+        usuario: &str,
+        tx_cliente: mpsc::UnboundedSender<MensajesDeSalida>,
+    ) {
+        let mut memoria = estado.lock().await;
+        memoria.usuarios.insert(usuario.to_string(), (tx_cliente, EstadoUsuario::ACTIVE));
+
+        let mut miembros = std::collections::HashSet::new();
+        miembros.insert(usuario.to_string());
+
+        memoria.salas.insert(roomname.to_string(), Salas {
+            dueno_sala: usuario.to_string(),
+            miembros,
+            invitados: std::collections::HashSet::new(),
+        });
+    }
+
+    async fn setup_sala_dos_usuarios(
+        estado: &Arc<Mutex<EstadoServidor>>,
+        roomname: &str,
+        dueno: &str,
+        tx_dueno: mpsc::UnboundedSender<MensajesDeSalida>,
+        miembro2: &str,
+        tx_miembro2: mpsc::UnboundedSender<MensajesDeSalida>,
+    ) {
+        let mut memoria = estado.lock().await;
+        
+        memoria.usuarios.insert(dueno.to_string(), (tx_dueno, EstadoUsuario::ACTIVE));
+        memoria.usuarios.insert(miembro2.to_string(), (tx_miembro2, EstadoUsuario::ACTIVE));
+
+        let mut miembros = std::collections::HashSet::new();
+        miembros.insert(dueno.to_string());
+        miembros.insert(miembro2.to_string());
+
+        memoria.salas.insert(roomname.to_string(), Salas {
+            dueno_sala: dueno.to_string(),
+            miembros,
+            invitados: std::collections::HashSet::new(),
+        });
+    }
+
+    async fn setup_sala_con_invitado(
+        estado: &Arc<Mutex<EstadoServidor>>,
+        roomname: &str,
+        dueno: &str,
+        tx_dueno: mpsc::UnboundedSender<MensajesDeSalida>,
+        invitado: &str,
+        tx_invitado: mpsc::UnboundedSender<MensajesDeSalida>,
+    ) {
+        let mut memoria = estado.lock().await;
+        
+        // Registramos a ambos usuarios en el server
+        memoria.usuarios.insert(dueno.to_string(), (tx_dueno, EstadoUsuario::ACTIVE));
+        memoria.usuarios.insert(invitado.to_string(), (tx_invitado, EstadoUsuario::ACTIVE));
+
+        // El dueño va a miembros
+        let mut miembros = std::collections::HashSet::new();
+        miembros.insert(dueno.to_string());
+
+        // El invitado va a la lista de espera
+        let mut invitados = std::collections::HashSet::new();
+        invitados.insert(invitado.to_string());
+
+        memoria.salas.insert(roomname.to_string(), Salas {
+            dueno_sala: dueno.to_string(),
+            miembros,
+            invitados,
+        });
+    }
+
     //Si el destinatario no existe
     #[tokio::test] 
     async fn test_no_existe_usuario(){
@@ -169,23 +243,12 @@ use crate::estado::{EstadoServidor};
         let roomname = "Sala_Prueba".to_string();
         let emisor = nombre_actual.unwrap();
         let mut memoria = estado.lock().await;
+        let (tx_aly, _rx_aly) = tokio::sync::mpsc::unbounded_channel();
 
+        //cambiar est 
+        //Creamos la sala y poemos al buen BOB en la sala de invitados
 
-        { //Creamos la sala y poemos al buen BOB en la sala de invitados
-            memoria.usuarios.insert(emisor.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
-
-            let mut miembros = std::collections::HashSet::new();
-            miembros.insert("Aly".to_string()); // Dueño de la sala
-
-            let mut invitados = std::collections::HashSet::new();
-            invitados.insert(emisor.clone()); // Bob está invitado
-
-            memoria.salas.insert(roomname.clone(), Salas {
-                dueno_sala: "Aly".to_string(),
-                miembros,
-                invitados,
-            });
-        }
+        setup_sala_con_invitado(&estado, &roomname, "Aly", tx_aly, &emisor, tx_cliente).await;
 
         let respuesta_generada = {
             let EstadoServidor { ref usuarios, ref mut salas } = *memoria;
@@ -240,21 +303,18 @@ use crate::estado::{EstadoServidor};
     #[tokio::test]
     async fn joinroom_no_invitado() {
         let (estado, _, tx_cliente) = setup_entorno().await;
+        let (tx_aly, _rx_aly) = tokio::sync::mpsc::unbounded_channel();
         let emisor = "Charlie".to_string();
         let roomname = "Sala_Prueba".to_string();
+
+//cambiar esto
+
+        setup_sala_un_usuario(&estado, &roomname, "Aly", tx_aly).await;
 
         {
             let mut memoria = estado.lock().await;
             memoria.usuarios.insert(emisor.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
             
-            let mut miembros = std::collections::HashSet::new();
-            miembros.insert("Aly".to_string());
-
-            memoria.salas.insert(roomname.clone(), Salas {
-                dueno_sala: "Aly".to_string(),
-                miembros,
-                invitados: std::collections::HashSet::new(),
-            });
         }
 
         let mut memoria = estado.lock().await;
@@ -292,23 +352,16 @@ use crate::estado::{EstadoServidor};
         let otro_usuario = "Bob".to_string();
         let roomname = "Sala_Prueba".to_string();
 
-        {
-        
-            let mut memoria = estado.lock().await;
-            memoria.usuarios.insert(emisor.clone(), (tx_cliente.clone(), EstadoUsuario::ACTIVE));
-            memoria.usuarios.insert(otro_usuario.clone(), (tx_cliente, EstadoUsuario::ACTIVE));
+        //cambiar esto
 
-            let mut miembros = std::collections::HashSet::new();
-            miembros.insert(emisor.clone());
-            miembros.insert(otro_usuario.clone());
+        setup_sala_dos_usuarios(
+            &estado, 
+            &roomname,
+            &emisor,
+            tx_cliente.clone(),
+            &otro_usuario,
+            tx_cliente.clone()).await;
 
-            memoria.salas.insert(roomname.clone(), Salas {
-                dueno_sala: emisor.clone(),
-                miembros,
-                invitados: std::collections::HashSet::new(),
-            });
-
-        }
 
         let memoria = estado.lock().await;
 
@@ -400,4 +453,110 @@ use crate::estado::{EstadoServidor};
             },
             _ => panic!("El server no detectó al metiche de Cahrlie")
         }
+    }
+
+    #[tokio::test]
+    async fn test_text_room_exitoso() {
+        let (estado, _, tx_emisor) = setup_entorno().await;
+        let emisor = "Aly".to_string();
+        let roomname = "Sala_Prueba";
+        let txt_enviado = "Muy buenas".to_string();
+
+        let (tx_bob, mut rx_bob) = mpsc::unbounded_channel();
+
+        //cambiar esto 
+        //Una sala con Aly y Bob
+
+        setup_sala_dos_usuarios(&estado, roomname, "Aly", tx_emisor, "Bob", tx_bob).await;
+
+
+        let memoria = estado.lock().await;
+
+        let respuesta = {
+            let EstadoServidor { ref usuarios, ref salas } = *memoria;
+            let sala = salas.get(roomname).unwrap();
+            
+            //Si no está en la sala
+            if !sala.miembros.contains(&emisor) {
+                Some(MensajesDeSalida::RESPONSE {
+                    operation: Operacion::ROOM_TEXT,
+                    resultado: ResultadoOperacion::NOT_JOINED,
+                    extra: Some(roomname.to_string()),
+                })
+            }else {
+                let msj_sala = MensajesDeSalida::ROOM_TEXT_FROM {
+                    roomname: roomname.to_string(),
+                    username: emisor.clone(),
+                    text: txt_enviado,
+                };
+
+                for miembro in &sala.miembros {
+                    if miembro != &emisor {
+                        if let Some((tx_destino, _)) = usuarios.get(miembro) {
+                            let _ = tx_destino.send(msj_sala.clone());
+                        }
+                    }
+                }
+                None
+            }
+        };
+        drop(memoria);
+
+        //Inicio de las verificaciones 
+
+        //Esta parte tengo dudas pqqqqq según yo sí debe de mandar algo al emisor del msj que mandó no? o no? 
+        assert!(respuesta.is_none(), "El server no debe de responder al emisor");
+
+        let msj_bob = rx_bob.try_recv().expect("Bob debe de recibir el msj de la sala");
+        match msj_bob {
+            MensajesDeSalida::ROOM_TEXT_FROM { roomname: r, username: u, text: t } => {
+                assert_eq!(r, "Sala_Prueba");
+                assert_eq!(u, "Aly", "El msj debe de indicar que Aly lo envió");
+                assert_eq!(t, "Muy buenas");
+            },
+            _ => panic!("Bob tiene esquizofrenia y recibió un msj que no era"),
+        }
+
+    }
+
+    #[tokio::test]
+    async fn test_text_room_no_exitoso(){
+        let (estado, _, tx_cliente) = setup_entorno().await;
+        let roomname = "Sala_Prueba";
+        let emisor = "Charlie".to_string();
+
+        setup_sala_un_usuario(&estado, roomname, "Aly", tx_cliente).await;
+
+        let memoria = estado.lock().await;
+        let respuesta = {
+            let EstadoServidor {ref salas, ..  } = *memoria;
+
+            if let Some(sala) = salas.get(roomname){
+                if !sala.miembros.contains(&emisor) {
+                    Some(MensajesDeSalida::RESPONSE { 
+                        operation: Operacion::ROOM_TEXT,
+                        resultado: ResultadoOperacion::NOT_JOINED,
+                        extra: Some(roomname.to_string()),
+                    })
+                }else {
+                    None
+                }
+            }else {
+                None
+            }
+        };
+
+        drop(memoria);
+
+        match respuesta {
+            Some(MensajesDeSalida::RESPONSE { resultado, .. }) => {
+                assert_eq!(
+                    resultado,
+                    ResultadoOperacion::NOT_JOINED,
+                    "El server debe de bloquear al metiche de Charlie con Not NOT_JOINED"
+                );
+            },
+            _ => panic!("El server recibió la operación"),
+        }
+        
     }

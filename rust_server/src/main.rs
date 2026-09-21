@@ -1,5 +1,6 @@
 //Código robado de https://github.com/dheerajgopi/nimblecache/tree/blog-1
 
+pub mod usuarios; 
 mod server;
 mod manejador;
 mod protocolo;
