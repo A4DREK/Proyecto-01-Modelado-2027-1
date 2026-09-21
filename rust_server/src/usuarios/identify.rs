@@ -10,6 +10,14 @@ pub async fn procesar(
     tx_cliente: mpsc::UnboundedSender<MensajesDeSalida>
 ) -> Option<MensajesDeSalida> {
     
+    if nuevo_usuario.chars().count() > 8 {
+        return Some(MensajesDeSalida::RESPONSE {
+            operation: Operacion::INVALID,
+            resultado: ResultadoOperacion::INVALID,
+            extra: None
+        });
+    }
+
     //Modificador de la memoria
     let mut memoria =  estado.lock().await;
 

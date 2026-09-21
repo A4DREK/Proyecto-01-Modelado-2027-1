@@ -1,5 +1,10 @@
 //Codigo que me robé de: https://github.com/dheerajgopi/nimblecache/tree/blog-1
-use crate::{estado::EstadoCompartido, manejador};
+use crate::{
+    estado::EstadoCompartido,
+    manejador, 
+    usuarios,
+    protocolo::{MensajesDeSalida, ResultadoOperacion}
+};
 
 use anyhow::{Error, Result};
 use log::{info, error};
@@ -57,7 +62,8 @@ impl Server{
                             info!("Recibido: {}", linea);
 
                             let respuesta = match manejador::procesar_json(
-                                &linea, estado_cliente.clone(),
+                                &linea, 
+                                estado_cliente.clone(),
                                 tx.clone(),
                                 &mut nombre_actual).await{
                                     Some(r) =>  r,
@@ -68,6 +74,13 @@ impl Server{
                             if let Err(e) = framed.send(salida_json).await{
                                 error!("Error al enciar msj al cliente: {}", e);
                                 break;
+                            }
+
+                            if let MensajesDeSalida::RESPONSE {ref resultado, .. } = respuesta {
+                                if *resultado == ResultadoOperacion::INVALID || *resultado == ResultadoOperacion::NOT_IDENTIFIED {
+                                    info!("Desconectando cliente por fallo de protocolo: {:?}", resultado);
+                                    break;
+                                }
                             }
 
                         }
@@ -83,7 +96,9 @@ impl Server{
                         
                     }
                 }
+                usuarios::procesar_disconnect(&estado_cliente, &mut nombre_actual).await;
                 info!("Cliente se desconectó lol");
+
             });
         }
     }

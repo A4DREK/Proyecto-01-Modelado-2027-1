@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion, EstadoUsuario};
-use crate::estado::{EstadoCompartido, Transmisor, EstadoServidor};
+use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion};
+use crate::estado::{EstadoCompartido, Transmisor};
 use crate::{salas, usuarios};
 
 use log::{info, error};

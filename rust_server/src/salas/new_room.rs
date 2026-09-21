@@ -12,6 +12,14 @@ pub async fn procesar(
     
     let mut memoria = estado.lock().await;
 
+    if roomname.chars().count() > 16 {
+        return Some(MensajesDeSalida::RESPONSE {
+            operation: Operacion::INVALID,
+            resultado: ResultadoOperacion::INVALID,
+            extra: None,
+        });
+    }
+
     //Si ya existe la sala 
     if memoria.salas.contains_key(&roomname){
         return Some(MensajesDeSalida::RESPONSE {
