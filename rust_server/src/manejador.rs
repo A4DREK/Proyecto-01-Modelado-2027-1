@@ -1,38 +1,47 @@
-use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion};
 use crate::estado::{EstadoCompartido, Transmisor};
+use crate::protocolo::{MensajesDeEntrada, MensajesDeSalida, Operacion, ResultadoOperacion};
 use crate::{salas, usuarios};
 
-use log::{info, error};
+use log::{error, info};
 
 pub async fn procesar_json(
-    linea_txt : &str,
+    linea_txt: &str,
     estado: EstadoCompartido,
     tx_cliente: Transmisor,
     nombre_actual: &mut Option<String>,
 ) -> Option<MensajesDeSalida> {
-
     //Inicio de los casos para deserializar el JSON dsjf
-    match serde_json::from_str::<MensajesDeEntrada>(linea_txt){
+    match serde_json::from_str::<MensajesDeEntrada>(linea_txt) {
         Ok(comando) => {
             info!("Coso del comando bien recibido: {:?}", comando);
 
-            match comando{
+            match comando {
                 //Inicia a checar que parte del comando del JSON
-                MensajesDeEntrada::IDENTIFY{username: nuevo_usuario} => {
+                MensajesDeEntrada::IDENTIFY {
+                    username: nuevo_usuario,
+                } => {
                     info!("Nombre del cliente: {}", nuevo_usuario);
-                    usuarios::procesar_identify(&estado, nombre_actual, nuevo_usuario, tx_cliente.clone()).await
+                    usuarios::procesar_identify(
+                        &estado,
+                        nombre_actual,
+                        nuevo_usuario,
+                        tx_cliente.clone(),
+                    )
+                    .await
                 }
 
-                MensajesDeEntrada::STATUS { status: nuevo_estado } => {
+                MensajesDeEntrada::STATUS {
+                    status: nuevo_estado,
+                } => {
                     info!("Cambio de estado del usuario a: {:?}", nuevo_estado);
-                    
+
                     //Aquí se debe de actualizar el estado en memoria y pasarlo a todos los usuarios
-                    usuarios::procesar_status(&estado, &nombre_actual, nuevo_estado).await
+                    usuarios::procesar_status(&estado, nombre_actual, nuevo_estado).await
                 }
 
                 MensajesDeEntrada::USERS => {
                     info!("Se solicita la lista de usuarios");
-                    //LEER EL FKING HASH MAP Y DEVOLVER USER_LIST  
+                    //LEER EL FKING HASH MAP Y DEVOLVER USER_LIST
                     let _emisor = match verificar_usuario(nombre_actual) {
                         Ok(nombre) => nombre,
                         Err(mensaje_error) => return Some(mensaje_error),
@@ -41,10 +50,13 @@ pub async fn procesar_json(
                     usuarios::procesar_users(&estado).await
                 }
 
-                MensajesDeEntrada::TEXT { username: destinatario, text } => {
-                    info!("Mensaje para {}: {}", destinatario, text );
+                MensajesDeEntrada::TEXT {
+                    username: destinatario,
+                    text,
+                } => {
+                    info!("Mensaje para {}: {}", destinatario, text);
                     //Buscar el socket del destinatario y devovler TEXT_FROM
-                    
+
                     let emisor = obtener_emisor(nombre_actual)?;
                     usuarios::procesar_text(&estado, emisor, destinatario, text).await
                 }
@@ -52,9 +64,8 @@ pub async fn procesar_json(
                 MensajesDeEntrada::PUBLIC_TEXT { text } => {
                     info!("Mensaje general: {}", text);
                     // Enviar el texto a todos los usuarios que esten en la red
-                    let emisor  = obtener_emisor(nombre_actual)?;
+                    let emisor = obtener_emisor(nombre_actual)?;
                     usuarios::procesar_public_text(&estado, emisor, text).await
-                    
                 }
 
                 MensajesDeEntrada::NEW_ROOM { roomname } => {
@@ -67,12 +78,14 @@ pub async fn procesar_json(
                     };
 
                     salas::new_room::procesar(&estado, roomname, emisor).await
-
                 }
 
-                MensajesDeEntrada::INVITE { roomname, usernames } => {
+                MensajesDeEntrada::INVITE {
+                    roomname,
+                    usernames,
+                } => {
                     info!("Invitar de {} a {:?}", roomname, usernames);
-                    //Algo tengo que hacer para las invitaciones 
+                    //Algo tengo que hacer para las invitaciones
 
                     let emisor = match verificar_usuario(nombre_actual) {
                         Ok(nombre) => nombre,
@@ -90,11 +103,10 @@ pub async fn procesar_json(
                     //Se verifica que este el emisor
                     let emisor: String = match verificar_usuario(nombre_actual) {
                         Ok(nombre) => nombre,
-                        Err(e) => return Some(e), 
+                        Err(e) => return Some(e),
                     };
 
                     salas::procesar_join_room(&estado, roomname, emisor).await
-
                 }
 
                 MensajesDeEntrada::ROOM_USERS { roomname } => {
@@ -102,13 +114,12 @@ pub async fn procesar_json(
 
                     //Muestra el HashMap de la lista de los usuarios de dicha sala
 
-                    let emisor: String = match verificar_usuario(nombre_actual){
+                    let emisor: String = match verificar_usuario(nombre_actual) {
                         Ok(nombre) => nombre,
-                        Err(e)=> return Some(e),
+                        Err(e) => return Some(e),
                     };
 
                     salas::procesar_room_users(&estado, roomname, emisor).await
-                    
                 }
 
                 MensajesDeEntrada::ROOM_TEXT { roomname, text } => {
@@ -121,7 +132,6 @@ pub async fn procesar_json(
                     };
 
                     salas::procesar_room_text(&estado, roomname, text, emisor).await
-
                 }
 
                 MensajesDeEntrada::LEAVE_ROOM { roomname } => {
@@ -140,16 +150,15 @@ pub async fn procesar_json(
 
                     //Limpiar al usuario del HashMap y mandar la noti de DISCONNECTED
                     usuarios::procesar_disconnect(&estado, nombre_actual).await
-                    
                 }
             }
         }
 
         Err(e) => {
             error!("Comando invalido del JSON: {}", e);
-            
+
             //Debe de salir INVALID si llega a pasar algo que no
-            Some(MensajesDeSalida::RESPONSE{
+            Some(MensajesDeSalida::RESPONSE {
                 operation: Operacion::INVALID,
                 resultado: ResultadoOperacion::INVALID,
                 extra: None,
@@ -158,8 +167,8 @@ pub async fn procesar_json(
     }
 }
 
-fn verificar_usuario(nombre_actual: &mut Option<String>) -> Result<String, MensajesDeSalida>{
-    match nombre_actual{
+fn verificar_usuario(nombre_actual: &mut Option<String>) -> Result<String, MensajesDeSalida> {
+    match nombre_actual {
         Some(nombre) => Ok(nombre.clone()),
         None => Err(MensajesDeSalida::RESPONSE {
             operation: Operacion::INVALID,
@@ -169,7 +178,7 @@ fn verificar_usuario(nombre_actual: &mut Option<String>) -> Result<String, Mensa
     }
 }
 
-fn obtener_emisor(nombre_actual: &Option<String>) -> Option<String>{
+fn obtener_emisor(nombre_actual: &Option<String>) -> Option<String> {
     match nombre_actual {
         Some(nombre) => Some(nombre.clone()),
         None => {
@@ -180,6 +189,5 @@ fn obtener_emisor(nombre_actual: &Option<String>) -> Option<String>{
 }
 
 #[cfg(test)]
-#[path ="pruebas_unitarias.rs"]
+#[path = "pruebas_unitarias.rs"]
 mod tests;
-

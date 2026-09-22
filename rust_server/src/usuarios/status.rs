@@ -1,5 +1,5 @@
-use crate::protocolo::*;
 use crate::estado::EstadoServidor;
+use crate::protocolo::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -8,7 +8,6 @@ pub async fn procesar(
     nombre_actual: &Option<String>,
     nuevo_estado: EstadoUsuario,
 ) -> Option<MensajesDeSalida> {
-
     //Memoria para buscar al usuario
     let mut memoria = estado.lock().await;
 
@@ -18,7 +17,7 @@ pub async fn procesar(
         Some(nombre) => nombre.clone(),
         //Si no existe el nombre
         None => {
-            return  Some(MensajesDeSalida::RESPONSE {
+            return Some(MensajesDeSalida::RESPONSE {
                 operation: Operacion::INVALID,
                 resultado: ResultadoOperacion::NOT_IDENTIFIED,
                 extra: None,
@@ -26,23 +25,22 @@ pub async fn procesar(
         }
     };
 
-    if let Some((_tx, estado_actual)) = memoria.usuarios.get_mut(&emisor) {
-        if *estado_actual != nuevo_estado {
-            *estado_actual = nuevo_estado.clone();
+    if let Some((_tx, estado_actual)) = memoria.usuarios.get_mut(&emisor)
+        && *estado_actual != nuevo_estado
+    {
+        *estado_actual = nuevo_estado.clone();
 
-            let msj_usuarios = MensajesDeSalida::NEW_STATUS {
-                username: emisor.clone(),
-                status: nuevo_estado,
-            };
+        let msj_usuarios = MensajesDeSalida::NEW_STATUS {
+            username: emisor.clone(),
+            status: nuevo_estado,
+        };
 
-            for (nombre,(tx_destino, _)) in memoria.usuarios.iter(){
-                if *nombre != emisor {
-                let _ = tx_destino.send(msj_usuarios.clone()); 
-                }
+        for (nombre, (tx_destino, _)) in memoria.usuarios.iter() {
+            if *nombre != emisor {
+                let _ = tx_destino.send(msj_usuarios.clone());
             }
         }
     }
 
     None
-
 }

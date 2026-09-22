@@ -1,5 +1,5 @@
-use crate::protocolo::*;
 use crate::estado::EstadoServidor;
+use crate::protocolo::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -8,9 +8,11 @@ pub async fn procesar(
     roomname: String,
     emisor: String,
 ) -> Option<MensajesDeSalida> {
-
     let mut memoria = estado.lock().await;
-    let EstadoServidor { ref usuarios, ref mut salas } = *memoria;
+    let EstadoServidor {
+        ref usuarios,
+        ref mut salas,
+    } = *memoria;
 
     //Validar que existe sala
     let sala = match salas.get_mut(&roomname) {
@@ -24,7 +26,7 @@ pub async fn procesar(
         }
     };
 
-    if !sala.miembros.contains(&emisor){
+    if !sala.miembros.contains(&emisor) {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::LEAVE_ROOM,
             resultado: ResultadoOperacion::NOT_JOINED,

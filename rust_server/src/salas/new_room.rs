@@ -1,6 +1,6 @@
-use crate::protocolo::*;
 use crate::estado::EstadoServidor;
-use crate::estado::*; 
+use crate::estado::*;
+use crate::protocolo::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -9,7 +9,6 @@ pub async fn procesar(
     roomname: String,
     emisor: String,
 ) -> Option<MensajesDeSalida> {
-    
     let mut memoria = estado.lock().await;
 
     if roomname.chars().count() > 16 {
@@ -20,8 +19,8 @@ pub async fn procesar(
         });
     }
 
-    //Si ya existe la sala 
-    if memoria.salas.contains_key(&roomname){
+    //Si ya existe la sala
+    if memoria.salas.contains_key(&roomname) {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::NEW_ROOM,
             resultado: ResultadoOperacion::ROOM_ALREADY_EXISTS,
@@ -29,7 +28,7 @@ pub async fn procesar(
         });
     }
 
-    let mut miembros_iniciales  = std::collections::HashSet::new();
+    let mut miembros_iniciales = std::collections::HashSet::new();
     miembros_iniciales.insert(emisor.clone()); //Solo está el que creo la sala
 
     let nueva_sala = Salas {
@@ -45,5 +44,4 @@ pub async fn procesar(
         resultado: ResultadoOperacion::SUCCESS,
         extra: Some(roomname),
     })
-
 }

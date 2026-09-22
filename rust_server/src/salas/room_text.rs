@@ -1,5 +1,5 @@
-use crate::protocolo::*;
 use crate::estado::EstadoServidor;
+use crate::protocolo::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -9,9 +9,11 @@ pub async fn procesar(
     text: String,
     emisor: String,
 ) -> Option<MensajesDeSalida> {
-
     let memoria = estado.lock().await;
-    let EstadoServidor { ref usuarios, ref salas } = *memoria;
+    let EstadoServidor {
+        ref usuarios,
+        ref salas,
+    } = *memoria;
 
     //La sala existe?
     let sala = match salas.get(&roomname) {
@@ -23,16 +25,15 @@ pub async fn procesar(
                 extra: Some(roomname),
             });
         }
-                        
     };
 
     //Validar que el usuario esté en la sala
-    if !sala.miembros.contains(&emisor){
+    if !sala.miembros.contains(&emisor) {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::ROOM_TEXT,
             resultado: ResultadoOperacion::NOT_JOINED,
             extra: Some(roomname.clone()),
-        })
+        });
     }
 
     //Mensaje que se mandará a la sala
@@ -43,13 +44,12 @@ pub async fn procesar(
     };
 
     for miembro in &sala.miembros {
-        if miembro != &emisor {
-            if let Some((tx_destino, _)) = usuarios.get(miembro) {
-                let _ = tx_destino.send(msj_sala.clone());
-            }
+        if miembro != &emisor
+            && let Some((tx_destino, _)) = usuarios.get(miembro)
+        {
+            let _ = tx_destino.send(msj_sala.clone());
         }
     }
 
     None
-
 }

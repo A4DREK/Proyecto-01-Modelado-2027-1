@@ -1,5 +1,5 @@
-use crate::protocolo::*;
 use crate::estado::EstadoServidor;
+use crate::protocolo::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -9,10 +9,12 @@ pub async fn procesar(
     usernames: Vec<String>,
     emisor: String,
 ) -> Option<MensajesDeSalida> {
-
     let mut memoria = estado.lock().await;
 
-    let EstadoServidor { ref mut salas, ref usuarios } = *memoria;
+    let EstadoServidor {
+        ref mut salas,
+        ref usuarios,
+    } = *memoria;
 
     //Validar que exista la sala
     let sala = match salas.get_mut(&roomname) {
@@ -27,11 +29,11 @@ pub async fn procesar(
     };
 
     //Si el usuario no esta en la sala
-    if !sala.miembros.contains(&emisor){
-        return  None;
+    if !sala.miembros.contains(&emisor) {
+        return None;
     }
 
-    //Valida a todos los usuarios que esten en la sala  
+    //Valida a todos los usuarios que esten en la sala
     for usuario in &usernames {
         if !usuarios.contains_key(usuario) {
             return Some(MensajesDeSalida::RESPONSE {
@@ -50,13 +52,13 @@ pub async fn procesar(
 
     for usuario in usernames {
         //Por si hay algún duplicado o si ya está en la sala
-        if sala.miembros.contains(&usuario) || sala.invitados.contains(&usuario){
+        if sala.miembros.contains(&usuario) || sala.invitados.contains(&usuario) {
             continue;
         }
 
         sala.invitados.insert(usuario.clone());
 
-        if let Some((tx_destino, _)) = usuarios.get(&usuario){
+        if let Some((tx_destino, _)) = usuarios.get(&usuario) {
             let _ = tx_destino.send(invitacion.clone());
         }
     }

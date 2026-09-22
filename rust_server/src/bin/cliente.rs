@@ -1,21 +1,20 @@
 //ESTE CLIENTE ES SOLAMENTE DE PRUEBA PORQUE QUE HUEVA ESTAR ESCRBIENDO EL JSON
-//A CADA RATO PORQUE, POR QUÉ HARÍA ESO? SABES O SEA NO 
+//A CADA RATO PORQUE, POR QUÉ HARÍA ESO? SABES O SEA NO
 
-use tokio::net::TcpStream;
-use tokio_util::codec::{Framed, LinesCodec};
 use futures::{SinkExt, StreamExt};
 use serde_json::json;
 use tokio::io::{self, AsyncBufReadExt};
+use tokio::net::TcpStream;
+use tokio_util::codec::{Framed, LinesCodec};
 
 #[tokio::main]
 async fn main() {
-
     //creación de un parámetro para poder mandar arguemntos a consola
     let args: Vec<String> = std::env::args().collect();
 
-    let server_adrr = if args.len() > 1{
+    let server_adrr = if args.len() > 1 {
         args[1].clone()
-    }else{
+    } else {
         print!("No se brindó un dirección IP, Default a 127.0.0.1:1234");
         "127.0.0.1:1234".to_string()
     };
@@ -23,23 +22,23 @@ async fn main() {
     print!("Conexión a {}", server_adrr);
 
     //se conecta con el server
-    let stream = match TcpStream::connect(&server_adrr).await{
+    let stream = match TcpStream::connect(&server_adrr).await {
         Ok(r) => r,
         Err(e) => {
             println!("ERRRRROOOOOOOOR: {}", e);
             return;
-        }  
+        }
     };
 
-    //ESTO ES PARA EL CLIENTE DE PRUEBA 
+    //ESTO ES PARA EL CLIENTE DE PRUEBA
     let mut framed = Framed::new(stream, LinesCodec::new());
     let mut stdin = io::BufReader::new(io::stdin()).lines();
 
     println!("Escribe nombre de usuario: ");
 
-    let username = if let Ok(Some(line)) = stdin.next_line().await{
+    let username = if let Ok(Some(line)) = stdin.next_line().await {
         line.trim().to_string()
-    }else{
+    } else {
         print!("Error escribiendo");
         return;
     };
@@ -47,16 +46,17 @@ async fn main() {
     let iden_json = json!({
         "type":"IDENTIFY",
         "username": username
-    }).to_string();
-    
-    if framed.send(iden_json).await.is_err(){
+    })
+    .to_string();
+
+    if framed.send(iden_json).await.is_err() {
         println!("ERRRRROOOOOOOOR");
         return;
     }
 
     println!("Mandá mensajes cawn");
 
-    loop{
+    loop {
         tokio::select! {
             //Escrbir en la CLI
             linea_teclado = stdin.next_line() => {
@@ -101,12 +101,12 @@ async fn main() {
                                     "text": texto
                                 }).to_string()
                             };
-                            
+
                             // Envía el JSON formateado usando tu Framed
                             if framed.send(json_a_enviar).await.is_err() {
                                 println!("Error al enviar el mensaje al servidor");
                             }
-                           
+
                         }
                     }
                     _ => break,
@@ -128,5 +128,4 @@ async fn main() {
             }
         }
     }
-
 }

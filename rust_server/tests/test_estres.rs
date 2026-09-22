@@ -1,12 +1,11 @@
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::AsyncWriteExt;
 use tokio::io::AsyncReadExt;
-//use tokio_util::bytes::buf::{self, Reader};
-use std::time::{Instant, Duration};
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use rust_server::server::Server;
+use tokio::io::AsyncWriteExt;
+use tokio::net::{TcpListener, TcpStream};
 use rust_server::estado::EstadoServidor;
+use rust_server::server::Server;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
 
 const NUM_CLIENTES: usize = 300;
 const MENSAJES_POR_CLIENTE: usize = 5;
@@ -24,12 +23,14 @@ async fn test_stress_servidor() {
     // Configurar el estado global
     let estado = Arc::new(Mutex::new(EstadoServidor::nuevo()));
 
-    // Levantar el servidor en un puerto aleatorio 
+    // Levantar el servidor en un puerto aleatorio
     // Se escogio el 0 por: https://cubicspot-blogspot-com.translate.goog/2016/04/need-random-tcp-port-number-for-your.html?_x_tr_sch=http&_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=es&_x_tr_pto=sge
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("Fallo al hacer bind");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("Fallo al hacer bind");
     let puerto_asignado = listener.local_addr().unwrap().port();
     let host = format!("127.0.0.1:{}", puerto_asignado);
-    
+
     let mut servidor = Server::new(listener, estado);
 
     // Ejecutar el servidor en una tarea de fondo (background)
@@ -42,16 +43,17 @@ async fn test_stress_servidor() {
     // Pequeña pausa para asegurar que el servidor está escuchando
     tokio::time::sleep(Duration::from_millis(500)).await;
 
-    println!("Iniciando prueba hacia {} con {} clientes...", host, NUM_CLIENTES);
+    println!(
+        "Iniciando prueba hacia {} con {} clientes...",
+        host, NUM_CLIENTES
+    );
     let inicio = Instant::now();
 
     // Lanzar los clientes concurrentes
     let mut tareas = vec![];
     for id in 0..NUM_CLIENTES {
         let host_clon = host.clone();
-        let tarea = tokio::spawn(async move {
-            ejecutar_cliente(id, host_clon).await
-        });
+        let tarea = tokio::spawn(async move { ejecutar_cliente(id, host_clon).await });
         tareas.push(tarea);
     }
 
@@ -72,13 +74,16 @@ async fn test_stress_servidor() {
     println!("Fallidos: {}", fallidos);
 
     // final de la prueba
-    assert_eq!(fallidos, 0, "Hubo conexiones que fallaron durante la prueba de estrés");
+    assert_eq!(
+        fallidos, 0,
+        "Hubo conexiones que fallaron durante la prueba de estrés"
+    );
 }
 
 async fn ejecutar_cliente(id: usize, host: String) -> bool {
     let username = format!("u_{:03}", id);
     let roomname = "sala_test";
-    
+
     let socket = match TcpStream::connect(&host).await {
         Ok(s) => s,
         Err(e) => {
@@ -91,7 +96,7 @@ async fn ejecutar_cliente(id: usize, host: String) -> bool {
 
     tokio::spawn(async move {
         let mut buf = [0; 2048];
-        while let Ok(n) = lector.read(&mut buf).await{
+        while let Ok(n) = lector.read(&mut buf).await {
             if n == 0 {
                 break;
             }
@@ -104,29 +109,37 @@ async fn ejecutar_cliente(id: usize, host: String) -> bool {
             match escritor.write_all(msj.as_bytes()).await {
                 Ok(_) => true,
                 Err(e) => {
-                    println!("errooor de [Cliente {}]en {}: {}",id, $paso, e);
+                    println!("errooor de [Cliente {}]en {}: {}", id, $paso, e);
                     false
                 }
             }
         }};
     }
 
-    if !enviar!("IDENTIFY", &format!(r#"{{"type":"IDENTIFY","username":"{}"}}"#, username)) {
+    if !enviar!(
+        "IDENTIFY",
+        &format!(r#"{{"type":"IDENTIFY","username":"{}"}}"#, username)
+    ) {
         return false;
-    } 
+    }
     tokio::time::sleep(Duration::from_millis(50)).await;
-    
-    if !enviar!("JOINED_ROOM", &format!(r#"{{"type":"JOINED_ROOM","roomname":"{}"}}"#, roomname)) { 
+
+    if !enviar!(
+        "JOINED_ROOM",
+        &format!(r#"{{"type":"JOINED_ROOM","roomname":"{}"}}"#, roomname)
+    ) {
         return false;
     }
 
     for i in 0..MENSAJES_POR_CLIENTE {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let msg_sala = format!(
-            r#"{{"type":"ROOM_TEXT","roomname":"{}","text":"Mensaje {}"}}"#, 
+            r#"{{"type":"ROOM_TEXT","roomname":"{}","text":"Mensaje {}"}}"#,
             roomname, i
         );
-        if !enviar!("ROOM_TEXT", &msg_sala) { return false; }
+        if !enviar!("ROOM_TEXT", &msg_sala) {
+            return false;
+        }
     }
 
     let _ = !enviar!("DISCONNECT", r#"{"type": "DISCONNECT"}"#);
@@ -134,4 +147,3 @@ async fn ejecutar_cliente(id: usize, host: String) -> bool {
     tokio::time::sleep(Duration::from_millis(50)).await;
     true
 }
-

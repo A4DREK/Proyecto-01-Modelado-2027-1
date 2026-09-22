@@ -1,5 +1,5 @@
-use crate::protocolo::*;
 use crate::estado::EstadoServidor;
+use crate::protocolo::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -9,17 +9,15 @@ pub async fn procesar(
     destinatario: String,
     texto: String,
 ) -> Option<MensajesDeSalida> {
-
-    //Lector de la memoria 
+    //Lector de la memoria
     let memoria = estado.lock().await;
 
-    //Buscamos al usuario que este en el HashMap 
+    //Buscamos al usuario que este en el HashMap
     match memoria.usuarios.get(&destinatario) {
         Some((tx_destino, _estado)) => {
-
             let msj = MensajesDeSalida::TEXT_FROM {
                 username: emisor,
-                text: texto.clone(), 
+                text: texto.clone(),
             };
 
             let _ = tx_destino.send(msj);
@@ -35,5 +33,4 @@ pub async fn procesar(
             })
         }
     }
-
 }
