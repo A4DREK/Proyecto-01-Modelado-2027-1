@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 #[derive(Parser, Debug)]
 #[command(name = "Servidor Duckson", about = "Un server TCP")]
 pub struct Cli {
-    #[arg(short, long, default_value = "8080")]
+    #[arg(short, long, default_value = "1234")]
     puerto: u16,
 }
 
