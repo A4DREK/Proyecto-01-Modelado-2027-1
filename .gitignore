@@ -1,7 +1,6 @@
 # Rust part
 **/target/
 **/*.rs.bk
-
 *.pdb
 
 #Flutter
@@ -21,7 +20,17 @@ app.*.map.json
 **/macos/Pods/
 **/macos/.generated/
 
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Runner.xcworkspace/xcuserdata/
+**/ios/DerivedData/
+
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+
 **/linux/flutter/ephemeral//ephemeral/
+**/windows/flutter/ephemeral/
 
 
 #OS
@@ -47,6 +56,8 @@ app.*.map.json
 .vscode/
 !.vscode/extensions.json
 *.code-workspace
+.idea/
+*.iml
 
 [._]*.s[a-v][a-z]
 [._]*.sw[a-p]
