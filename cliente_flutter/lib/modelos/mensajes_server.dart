@@ -5,10 +5,10 @@ sealed class MensajeServer {
   const MensajeServer(this.type);
 
   factory MensajeServer.fromJson(Map<String, dynamic> json) {
-    final typeStr = json['type'] as String?;
+    final typeStr = json['type']?.toString();
 
     if(typeStr == null) {
-      throw const FormatException('El diccionario JSON no tiene el type');
+      return UnknownMsj(json);
     }
 
     final msjType = MensajesServidorType.fromString(typeStr);
@@ -50,20 +50,20 @@ sealed class MensajeServer {
 class ResponseMsj extends MensajeServer {
   final String operation; 
   final String result;
-  final String extra;
+  final String? extra;
 
   //Constructor del responseMsj del protocolo para los RESPONSE
   ResponseMsj({
     required this.operation,
     required this.result,
-    required this.extra,
+    this.extra,
   }): super(MensajesServidorType.response);
 
   factory ResponseMsj.fromJson(Map<String, dynamic> json) {
     return ResponseMsj(
-      operation: json['operation'] as String,
-      result: json['result'] as String,
-      extra: json['extra'] as String,
+      operation: json['operation']?.toString() ?? '',
+      result: json['result']?.toString() ?? '',
+      extra: json['extra']?.toString() ?? '',
     );
 
   }
@@ -79,7 +79,7 @@ class NewUserMsj extends MensajeServer {
 
   factory NewUserMsj.fromJson(Map<String, dynamic> json) {
     return NewUserMsj(
-      username: json['username'] as String
+      username: json['username']?.toString() ?? '',
     );
   }
 }
@@ -96,8 +96,8 @@ class NewStatusMsj extends MensajeServer {
 
   factory NewStatusMsj.fromJson(Map<String, dynamic> json) {
     return NewStatusMsj(
-      username: json['username'] as String,
-      status: EstadoUsuario.fromString(json['status'] as String),
+      username: json['username']?.toString() ?? '',
+      status: EstadoUsuario.fromString(json['status']?.toString() ?? ''),
     );
   }
 }
@@ -111,9 +111,9 @@ class UserListMsj extends MensajeServer {
   }): super(MensajesServidorType.userList);
 
   factory UserListMsj.fromJson(Map<String, dynamic> json) {
-    final usuariosOG = json['users'] as Map<String, dynamic>;
+    final usuariosOG = json['users'] as Map<String, dynamic>? ?? {};
     final usuariosMod = usuariosOG.map(
-      (llave, valor) => MapEntry(llave, EstadoUsuario.fromString(valor as String)),
+      (llave, valor) => MapEntry(llave, EstadoUsuario.fromString(valor.toString())),
     );
 
     return UserListMsj(users: usuariosMod);
@@ -132,8 +132,8 @@ class TextFromMsj extends MensajeServer {
 
   factory TextFromMsj.fromJson(Map<String, dynamic> json){
     return TextFromMsj(
-      username: json['username'] as String,
-      text: json['text'] as String,
+      username: json['username']?.toString() ?? '',
+      text: json['text']?.toString() ?? '',
     );
   }
 }
@@ -150,8 +150,8 @@ class PublicTextFromMsj extends MensajeServer {
 
   factory PublicTextFromMsj.fromJson(Map<String, dynamic> json) {
     return PublicTextFromMsj(
-      username: json['username'] as String,
-      text: json['text'] as String,
+      username: json['username']?.toString() ?? '',
+      text: json['text']?.toString() ?? '',
     );
   }
 }
@@ -168,8 +168,8 @@ class InvitationMsj extends MensajeServer {
 
   factory InvitationMsj.fromJson(Map<String, dynamic> json) {
     return InvitationMsj(
-      username: json['username'] as String,
-      roomname: json['roomname'] as String,
+      username: json['username']?.toString() ?? '',
+      roomname: json['roomname']?.toString() ?? '',
     );
   }
 }
@@ -186,8 +186,8 @@ class JoinedRoomMsj extends MensajeServer {
 
   factory JoinedRoomMsj.fromJson(Map<String, dynamic> json) {
     return JoinedRoomMsj(
-      roomname: json['roomname'] as String,
-      username: json['username'] as String,
+      roomname: json['roomname']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
     );
   }
 }
@@ -203,12 +203,12 @@ class RoomUserListMsj extends MensajeServer {
     }): super(MensajesServidorType.roomUserList);
 
   factory RoomUserListMsj.fromJson(Map<String, dynamic> json) {
-    final usuariosOG = json['users'] as Map<String, dynamic>;
+    final usuariosOG = json['users'] as Map<String, dynamic>? ?? {};
     final usuariosMod = usuariosOG.map(
       (key, value) => MapEntry(key, EstadoUsuario.fromString(value as String)),
     );
     return RoomUserListMsj(
-      roomname: json['roomname'] as String,
+      roomname: json['roomname']?.toString() ?? '',
       users: usuariosMod,
     );
   }
@@ -228,9 +228,9 @@ class RoomTextFromMsj extends MensajeServer {
 
   factory RoomTextFromMsj.fromJson(Map<String, dynamic> json) {
     return RoomTextFromMsj(
-      roomname: json['roomname'] as String,
-      username: json['username'] as String,
-      text: json['text'] as String,
+      roomname: json['roomname']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      text: json['text']?.toString() ?? '',
     );
   }
 }
@@ -247,8 +247,8 @@ class LeftRoomMsj extends MensajeServer {
 
   factory LeftRoomMsj.fromJson(Map<String, dynamic> json){
     return LeftRoomMsj(
-      roomname: json['roomname'] as String,
-      username: json['username'] as String,
+      roomname: json['roomname']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
     );
   }
 }
@@ -263,7 +263,7 @@ class DisconnectedMsj extends MensajeServer {
 
   factory DisconnectedMsj.fromJson(Map<String, dynamic> json) {
     return DisconnectedMsj(
-      username: json['username'] as String,
+      username: json['username']?.toString() ?? '',
     );
   }
 }

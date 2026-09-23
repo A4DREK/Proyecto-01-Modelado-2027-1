@@ -3,34 +3,78 @@
 * A partir de aquí se iniciará a hacer las modificaciones para que el cliente quede
 * de acuerdo con las especificaciones del protocolo, estas estarán en el direcotrio de modelo y controlador
 */
-import 'dart:io';
+
+/*
+ * Hacemos la primera moficiacion para que acepte las partes de de servicio_tcp.dart  
+ */
+import 'dart:async';
+import 'package:cliente_flutter/modelos/cliente_comandos.dart';
+import 'package:cliente_flutter/modelos/mensajes_server.dart';
+import 'package:cliente_flutter/servicios/servicio_tcp.dart';
+
+
 
 void main () async {
-  try {
-    final socket = await Socket.connect('127.0.0.1', 1234);
-    print('Conected to server');
 
-    // Listen for responses from the server
-    socket.listen(
-      (data) {
-        print('Server Response: ${String.fromCharCodes(data).trim()}');
-      },
-      onDone: () {
-        print('Connection closed by server');
-        socket.destroy();
-      },
-      onError: (error) {
-        print('Error: $error');
-      },
-    );
+  final tcpServicio = TcpServicio();
 
-    final identification = '{"type":"IDENTIFY","username":"John Doe"}\n';
-    socket.write(identification);
+  tcpServicio.mensaje.listen(
+    (MensajeServer mensaje) {
+      print('\n--- Mensaje Recibido de Rust ---');
+      print('Tipo: ${mensaje.type.valorJson}');
 
-    // Close the connection after sending a message
-    await Future.delayed(Duration(seconds: 2));
-    await socket.close();
-  }catch (e) {
-    print('Unable to connect: $e');
+      switch (mensaje) {
+        case ResponseMsj response:
+          print('Operación: ${response.operation}');
+          print('Resultado: ${response.result}');
+          print('Extra: ${response.extra}');
+
+        case NewUserMsj newUser:
+          print('Nuevo usuario en el servidor: ${newUser.username}');
+        
+        case UserListMsj userList:
+          print('Lista de usuarios recibida:');
+          userList.users.forEach((username, status) {
+            print('  - $username (${status.valorJson})');
+          });
+        case PublicTextFromMsj publicText:
+          print('[Chat Público] ${publicText.username}: ${publicText.text}');
+        
+        default:
+          print('Otro msj parseado bien :D');
+      }
+    },
+    onError: (e) {
+      print('[Error en Socket]: $e');
+    },
+    onDone: () {
+      print('[CONEXIÓN CERRADA POR EL SERVIDOR]');
+    }
+  );
+
+  try{
+    print('Intentando conectar al servidor Rust en 127.0.0.1:1234...');
+    await tcpServicio.connect('127.0.0.1', 1234);
+    print('Conexión establecida.');
+
+    //inicio de mandar todos los comandos askdsoifjqewodjew
+    print('\n> Enviando IDENTIFY...');
+    tcpServicio.mandarComando(IdentifyComando(username:'Kimberly'));
+    await Future.delayed(const Duration(seconds: 1));
+
+    print('\n> Enviando USERS...');
+    tcpServicio.mandarComando(UsersComando());
+    await Future.delayed(const Duration(seconds: 1));
+
+    print('\n> Enviando PUBLIC_TEXT...');
+    tcpServicio.mandarComando(PublicTextComando(texto: '¡Hola desde Flutter!'));
+    await Future.delayed(const Duration(seconds: 2));
+
+    print('\nFinalizando pruebas y cerrando socket...');
+    await tcpServicio.desconectar();
+  } catch (e) {
+    print('Excepción atrapada: $e');
+  } finally {
+    tcpServicio.desechar();
   }
 } 

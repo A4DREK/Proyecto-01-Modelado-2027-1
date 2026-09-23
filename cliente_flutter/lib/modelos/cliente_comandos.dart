@@ -1,6 +1,6 @@
 import 'protocolo.dart';
 import 'dart:convert';
-const int maxTextoMb = 1024 * 1024
+const int maxTextoMb = 1024 * 1024;
 
 void _validarTexto(String texto){
   final tamanioByte = utf8.encode(texto).length;
@@ -19,7 +19,7 @@ class IdentifyComando implements ClienteComando {
 
   IdentifyComando({required this.username}){
     if (username.length > 8) {
-      throw new ArgumentError("El nombre no debe de exceder los 8 caractéres");
+      throw  ArgumentError("El nombre no debe de exceder los 8 caractéres");
     }
   }
 
