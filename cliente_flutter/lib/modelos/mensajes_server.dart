@@ -1,0 +1,155 @@
+import 'protocolo.dart';
+
+sealed class MensajeServer {
+  final MensajesServidorType type;
+  const MensajeServer(this.type);
+
+  factory MensajeServer.fromJson(Map<String, dynamic> json) {
+    final typeStr = json['type'] as String?;
+
+    if(typeStr == null) {
+      throw const FormatException('El diccionario JSON no tiene el type');
+    }
+
+    final msjType = MensajesServidorType.fromString(typeStr);
+
+    switch (msjType) {
+      case MensajesServidorType.response:
+        return ResponseMsj.fromJson(json);
+      case MensajesServidorType.newUser:
+        return NewUserMsj.fromJson(json);
+      case MensajesServidorType.newStatus:
+        return NewStatusMsj.fromJson(json);
+      case MensajesServidorType.userList:
+        return UserListMsj.fromJson(json);
+      case MensajesServidorType.textFrom:
+        return TextFromMsj.fromJson(json);
+      case MensajesServidorType.publicTextFrom:
+        return PublicTextFromMsj.fromJson(json);
+      case MensajesServidorType.invitation:
+        return InvitationMsj.fromJson(json);
+      case MensajesServidorType.joinedRoom:
+        return JoinedRoomMsj.fromJson(json);
+      case MensajesServidorType.roomUserList:
+        return RoomUserListMsj.fromJson(json);
+      case MensajesServidorType.roomTextFrom:
+        return RoomTextFromMsj.fromJson(json);
+      case MensajesServidorType.leftRoom:
+        return LeftRoomMsj.fromJson(json);
+      case MensajesServidorType.disconnected:
+        return DisconnectedMsj.fromJson(json);
+      case MensajesServidorType.unknown:
+        return UnknownMsj(json);
+    }
+  }
+}
+
+//EN ESTA PARTE SE INICIARÁ A HACER LA IMPLEMENTACIÓN DE LOS MSJ 
+
+//Para los casos donde el server debe de devolver RESPONSE, que se decodifique el JSON 
+class ResponseMsj extends MensajeServer {
+  final String operation; 
+  final String result;
+  final String extra;
+
+  //Constructor del responseMsj del protocolo para los RESPONSE
+  ResponseMsj({
+    required this.operation,
+    required this.result,
+    required this.extra,
+  }): super(MensajesServidorType.response);
+
+  factory ResponseMsj.fromJson(Map<String, dynamic> json) {
+    return ResponseMsj(
+      operation: json['operation'] as String,
+      result: json['result'] as String,
+      extra: json['extra'] as String,
+    );
+
+  }
+}
+
+//Para el caso de new user
+class NewUserMsj extends MensajeServer {
+  final String username;
+
+  NewUserMsj({
+    required this.username
+  }): super(MensajesServidorType.newUser);
+
+  factory NewUserMsj.fromJson(Map<String, dynamic> json) {
+    return NewUserMsj(
+      username: json['username'] as String
+    );
+  }
+}
+
+//Para el caso de New Status 
+class NewStatusMsj extends MensajeServer {
+  final String username;
+  final EstadoUsuario status;
+
+  NewStatusMsj({
+    required this.username,
+    required this .status,
+  }): super(MensajesServidorType.newStatus);
+
+  factory NewStatusMsj.fromJson(Map<String, dynamic> json) {
+    return NewStatusMsj(
+      username: json['username'] as String,
+      status: EstadoUsuario.fromString(json['status'] as String),
+    );
+  }
+}
+
+//Para la User List 
+class UserListMsj extends MensajeServer {
+  final Map<String, EstadoUsuario> users;
+
+  UserListMsj({
+    required this.users,
+  }): super(MensajesServidorType.userList);
+
+  factory UserListMsj.fromJson(Map<String, dynamic> json) {
+    final usuariosOG = json['users'] as Map<String, dynamic>;
+    final usuariosMod = usuariosOG.map(
+      (llave, valor) => MapEntry(llave, EstadoUsuario.fromString(valor as String)),
+    );
+
+    return UserListMsj(users: usuariosMod);
+  }
+}
+
+//Para el text from 
+class TextFromMsj extends MensajeServer {
+  final String username;
+  final String text;
+
+  TextFromMsj({
+    required this.username,
+    required this.text,
+  }): super(MensajesServidorType.textFrom);
+
+  factory TextFromMsj.fromJson(Map<String, dynamic> json){
+    return TextFromMsj(
+      username: json['username'] as String,
+      text: json['text'] as String,
+    );
+  }
+}
+
+//Para el public text
+class PublicTextFromMsj extends MensajeServer {
+  final String username;
+  final String text;
+
+  PublicTextFromMsj({required this.username, required this.text})
+      : super(MensajesServidorType.publicTextFrom);
+
+  factory PublicTextFromMsj.fromJson(Map<String, dynamic> json) {
+    return PublicTextFromMsj(
+      username: json['username'] as String,
+      text: json['text'] as String,
+    );
+  }
+}
