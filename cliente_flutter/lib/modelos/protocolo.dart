@@ -1,4 +1,5 @@
 enum JsonMsj {
+  response('RESPONSE'),
   newUser('NEW_USER'),
   newStatus('NEW_STATUS'),
   userList('USER_LIST'),
@@ -13,10 +14,14 @@ enum JsonMsj {
   final String valorJson;
   const JsonMsj(this.valorJson);
 
-  factory JsonMsj.fromJson(String jsonStr){
+  factory JsonMsj.fromString(String jsonStr){
     return values.firstWhere(
       (e) => e.valorJson == jsonStr,
       orElse: () => throw FormatException('Comando Desconocido: $jsonStr'),
     );
   }
+}
+
+sealed class MensajesServer {
+   
 }
