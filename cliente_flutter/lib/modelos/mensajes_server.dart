@@ -143,8 +143,10 @@ class PublicTextFromMsj extends MensajeServer {
   final String username;
   final String text;
 
-  PublicTextFromMsj({required this.username, required this.text})
-      : super(MensajesServidorType.publicTextFrom);
+  PublicTextFromMsj({
+    required this.username, 
+    required this.text
+    }): super(MensajesServidorType.publicTextFrom);
 
   factory PublicTextFromMsj.fromJson(Map<String, dynamic> json) {
     return PublicTextFromMsj(
@@ -152,4 +154,125 @@ class PublicTextFromMsj extends MensajeServer {
       text: json['text'] as String,
     );
   }
+}
+
+//para la invitacion
+class InvitationMsj extends MensajeServer {
+  final String username;
+  final String roomname;
+
+  InvitationMsj({
+    required this.username,
+    required this.roomname,
+  }): super(MensajesServidorType.invitation);
+
+  factory InvitationMsj.fromJson(Map<String, dynamic> json) {
+    return InvitationMsj(
+      username: json['username'] as String,
+      roomname: json['roomname'] as String,
+    );
+  }
+}
+
+//Para el caso de JoinedRoom
+class JoinedRoomMsj extends MensajeServer {
+  final String roomname;
+  final String username;
+
+  JoinedRoomMsj({
+    required this.roomname,
+    required this.username
+    }): super(MensajesServidorType.joinedRoom);
+
+  factory JoinedRoomMsj.fromJson(Map<String, dynamic> json) {
+    return JoinedRoomMsj(
+      roomname: json['roomname'] as String,
+      username: json['username'] as String,
+    );
+  }
+}
+
+//Para la lista de usuarios en la sala
+class RoomUserListMsj extends MensajeServer {
+  final String roomname;
+  final Map<String, EstadoUsuario> users;
+
+  RoomUserListMsj({
+    required this.roomname,
+    required this.users
+    }): super(MensajesServidorType.roomUserList);
+
+  factory RoomUserListMsj.fromJson(Map<String, dynamic> json) {
+    final usuariosOG = json['users'] as Map<String, dynamic>;
+    final usuariosMod = usuariosOG.map(
+      (key, value) => MapEntry(key, EstadoUsuario.fromString(value as String)),
+    );
+    return RoomUserListMsj(
+      roomname: json['roomname'] as String,
+      users: usuariosMod,
+    );
+  }
+}
+
+//Para los msj de una sala
+class RoomTextFromMsj extends MensajeServer {
+  final String roomname;
+  final String username;
+  final String text;
+
+  RoomTextFromMsj({
+    required this.roomname,
+    required this.username,
+    required this.text,
+  }): super(MensajesServidorType.roomTextFrom);
+
+  factory RoomTextFromMsj.fromJson(Map<String, dynamic> json) {
+    return RoomTextFromMsj(
+      roomname: json['roomname'] as String,
+      username: json['username'] as String,
+      text: json['text'] as String,
+    );
+  }
+}
+
+//Para cuando un usuario se va de una sala
+class LeftRoomMsj extends MensajeServer {
+  final String roomname;
+  final String username;
+
+  LeftRoomMsj({
+    required this.roomname,
+    required this.username,
+  }): super(MensajesServidorType.leftRoom);
+
+  factory LeftRoomMsj.fromJson(Map<String, dynamic> json){
+    return LeftRoomMsj(
+      roomname: json['roomname'] as String,
+      username: json['username'] as String,
+    );
+  }
+}
+
+//Para las desconexiones
+class DisconnectedMsj extends MensajeServer {
+  final String username;
+
+  DisconnectedMsj({
+    required this.username,
+  }): super(MensajesServidorType.disconnected);
+
+  factory DisconnectedMsj.fromJson(Map<String, dynamic> json) {
+    return DisconnectedMsj(
+      username: json['username'] as String,
+    );
+  }
+}
+
+//Por cualquier otra cosa que se llegará a presentar
+class UnknownMsj extends MensajeServer {
+  final Map<String, dynamic> json;
+
+  UnknownMsj(
+    this.json
+  ) : super(MensajesServidorType.unknown);
 }
