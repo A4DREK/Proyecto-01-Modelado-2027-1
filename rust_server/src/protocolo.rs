@@ -44,7 +44,7 @@ pub enum MensajesDeEntrada {
         usernames: Vec<String>,
     },
 
-    JOINED_ROOM {
+    JOIN_ROOM {
         roomname: String,
     },
 

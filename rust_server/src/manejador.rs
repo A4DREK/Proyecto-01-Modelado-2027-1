@@ -95,7 +95,7 @@ pub async fn procesar_json(
                     salas::procesar_invite(&estado, roomname, usernames, emisor).await
                 }
 
-                MensajesDeEntrada::JOINED_ROOM { roomname } => {
+                MensajesDeEntrada::JOIN_ROOM { roomname } => {
                     info!("Se acepto la invitación a: {}", roomname);
 
                     //Se tiene que validar la invitación y unir a la sala
