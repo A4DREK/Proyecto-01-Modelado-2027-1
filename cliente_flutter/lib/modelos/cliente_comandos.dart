@@ -1,5 +1,14 @@
 import 'protocolo.dart';
+import 'dart:convert';
+const int maxTextoMb = 1024 * 1024
 
+void _validarTexto(String texto){
+  final tamanioByte = utf8.encode(texto).length;
+
+  if(tamanioByte > maxTextoMb) {
+    throw ArgumentError('El msj pasa de 1MB ($tamanioByte bytes)');
+  }
+}
 abstract class ClienteComando {
   Map<String, dynamic> toJson();
 }
@@ -47,7 +56,9 @@ class TextComando implements ClienteComando {
   final String username;
   final String texto;
 
-  TextComando({required this.username, required this.texto});
+  TextComando({required this.username, required this.texto}) {
+    _validarTexto(texto); 
+  }
 
   @override
   Map<String, dynamic> toJson() => {
@@ -61,7 +72,9 @@ class TextComando implements ClienteComando {
 class PublicTextComando implements ClienteComando {
   final String texto;
   
-  PublicTextComando({required this.texto});
+  PublicTextComando({required this.texto}) {
+    _validarTexto(texto);
+  }
 
   @override
   Map<String, dynamic> toJson() => {
@@ -131,15 +144,17 @@ class RoomUsersComando implements ClienteComando {
 //Para el room text
 class RoomTextComando implements ClienteComando {
   final String roomname;
-  final String text;
+  final String texto;
 
-  RoomTextComando({required this.roomname, required this.text});
+  RoomTextComando({required this.roomname, required this.texto}) {
+    _validarTexto(texto);
+  }
 
   @override
   Map<String, dynamic> toJson() => {
     'type': 'ROOM_TEXT',
     'roomname': roomname,
-    'text': text,
+    'text': texto,
   };
 }
 
