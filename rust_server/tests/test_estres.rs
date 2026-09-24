@@ -43,6 +43,26 @@ async fn test_stress_servidor() {
     // Pequeña pausa para asegurar que el servidor está escuchando
     tokio::time::sleep(Duration::from_millis(500)).await;
 
+    println!("Sala de pruebas");
+    let admin_socket = TcpStream::connect(&host)
+        .await
+        .expect("Fallo en el admin");
+
+    let (_admin_lector, mut admin_escritor) = admin_socket.into_split();
+
+    admin_escritor
+        .write_all(b"{\"type\":\"IDENTIFY\",\"username\":\"admin_creador\"}\n")
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    admin_escritor
+        .write_all(b"{\"type\":\"NEW_ROOM\",\"roomname\":\"sala_test\"}\n")
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
     println!(
         "Iniciando prueba hacia {} con {} clientes...",
         host, NUM_CLIENTES
@@ -125,8 +145,8 @@ async fn ejecutar_cliente(id: usize, host: String) -> bool {
     tokio::time::sleep(Duration::from_millis(50)).await;
 
     if !enviar!(
-        "JOINED_ROOM",
-        &format!(r#"{{"type":"JOINED_ROOM","roomname":"{}"}}"#, roomname)
+        "JOIN_ROOM",
+        &format!(r#"{{"type":"JOIN_ROOM","roomname":"{}"}}"#, roomname)
     ) {
         return false;
     }

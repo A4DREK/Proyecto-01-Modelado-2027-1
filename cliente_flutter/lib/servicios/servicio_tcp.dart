@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
-import 'package:cliente_flutter/modelos/cliente_comandos.dart';
-import 'package:cliente_flutter/modelos/mensajes_server.dart';
+import '../modelos/cliente_comandos.dart';
+import '../modelos/mensajes_server.dart';
 
 class TcpServicio {
   Socket? _socket;

@@ -175,7 +175,7 @@ class LeaveRoomComando implements ClienteComando {
 class DisconnectComando implements ClienteComando {
   @override
   Map<String, dynamic> toJson() => {
-    'type': 'DISCONNECTED',
+    'type': 'DISCONNECT',
   };
 }
 
