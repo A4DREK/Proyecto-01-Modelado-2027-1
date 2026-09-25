@@ -1,55 +1,37 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'controlador/controlador.dart';
+import 'vista/pantalla_principal.dart';
 
-void main() async{
+void main(List<String> args) async {
+  print('\n Chat MyP');
+
+//Validación de los argumentos escritos en la terminal
+  if(args.length < 3) {
+    print('Faltan arguemntos en la terminal para inicializar al cliente');
+    print('Forma de escribir el comando: ');
+    print(' <comando> <IP> <Puerto> <Usuario>');
+    print('Ejemplo:');
+    print(' flutter run -d macos -a 127.0.0.1 -a 1234 -a Aly\n');
+    exit(1);
+  }
+
+  final ip = args[0];
+  final puerto = int.tryParse(args[1]) ?? 1234;
+  final username = args.sublist(2).join(' ');
+
   final controlador = Controlador();
 
-  controlador.addListener(() {
-    print('\n[UI ACTUALIZADA - notifyListeners disparado]');
-    print(' - Conectado: ${controlador.estaConectado}');
-    print(' - Usuarios Globales: ${controlador.usuariosConectados.keys.join(', ')}');
-    print(' - Salas: ${controlador.usuariosPorSala.keys.join(', ')}');
-    print(' - Mensajes Públicos: ${controlador.historialPublicoChat.length}');
-  });
-
   try {
-    print('Pruebas controladorcin');
-
-    print('\n1.Conectando como John Doe');
-    await controlador.conectarEIdentificar('127.0.0.1', 1234, 'John Doe');
-    await Future.delayed(const Duration(seconds: 1));
-
-    print('\n2.Mensaje de Prueba');
-    controlador.mandarTextoPublico('Webos');
-    await Future.delayed(const Duration(seconds: 1));
-
-    print('\n3.Creando una sala');
-    controlador.crearSala('Sala chida');
-    await Future.delayed(const Duration(seconds: 1));
-
-    print('\n4.Uniendose a la sala chida');
-    controlador.entrarSala('Sala chida');
-    await Future.delayed(const Duration(seconds: 1));
-
-    print('\n5.Enviar msj la sala chida');
-    controlador.mandarTxtSala('Sala chida', 'Mensaje épico');
-    await Future.delayed(const Duration(seconds: 1));
-
-    print('\n6. Abandona la sala');
-    controlador.salirSala('Sala chida');
-    await Future.delayed(const Duration(seconds: 1));
-
-    print('\n7.Desconectando al cliente');
-    controlador.desconectar();
-
-    print('\n Si funcionó esto lol');
-
+    
+    await controlador.conectarEIdentificar(ip, puerto, username);
+     
   }catch(e) {
-    print('Ocurrio un error: $e');
-  }finally {
-    controlador.desconectar();
+    print('error en la conxión');
+    exit(1);
   }
+
+  runApp(ChatApp(controlador: controlador));
 
 
 }
