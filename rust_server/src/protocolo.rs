@@ -107,6 +107,7 @@ pub enum ResultadoOperacion {
 pub enum MensajesDeSalida {
     RESPONSE {
         operation: Operacion,
+        #[serde(rename = "result")]
         resultado: ResultadoOperacion,
 
         #[serde(skip_serializing_if = "Option::is_none")]

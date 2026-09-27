@@ -44,6 +44,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   
   // null = Chat General || "NombreSala" = Sala seleccionada
   String? _salaSeleccionada;
+  String? _usuarioPrivSeleccionado;
 
   @override
   Widget build(BuildContext contexto) {
@@ -64,6 +65,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             backgroundColor: Colors.deepPurple,
             foregroundColor: Colors.white,
             actions: [
+              if(_salaSeleccionada != null)
+                IconButton(
+                  icon: const Icon(Icons.person_add_alt_1),
+                  tooltip: 'Invitar Usuarios',
+                  onPressed: () => _mostrarDialogoInvitacion(contexto, _salaSeleccionada!),
+                ),
               SelectorEstado(controlador: widget.controlador),
               IconButton(
                 icon: const Icon(Icons.exit_to_app),
@@ -98,6 +105,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               // Llamada limpia al widget externo de diálogo
                               final nuevaSala = await mostrarDialogosSala(contexto, widget.controlador);
                               if (nuevaSala != null) {
+                                widget.controlador.crearSala(nuevaSala);
                                 setState(() {
                                   _salaSeleccionada = nuevaSala;
                                 });
@@ -118,10 +126,49 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       onTap: () {
                         setState(() {
                           _salaSeleccionada = null;
+                          _usuarioPrivSeleccionado = null;
                         });
                       },
                     ),
-
+                    if(widget.controlador.invitacionesPendientes.isNotEmpty) ... [
+                      const Divider(),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        child: Text('Invitaciones', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                      ),
+                      ...widget.controlador.invitacionesPendientes.map((inv) {
+                        return ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.mail, color: Colors.orange, size: 18),
+                          title: Text(inv.roomname, style: const TextStyle(fontSize: 12)),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                tooltip: 'Unirse',
+                                onPressed: () {
+                                  widget.controlador.entrarSala(inv.roomname);
+                                  widget.controlador.invitacionesPendientes.remove(inv);
+                                  setState(() {
+                                    _salaSeleccionada = inv.roomname;
+                                  });
+                                }
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.cancel, color: Colors.redAccent, size: 20),
+                                tooltip: 'Rechazar',
+                                onPressed: () {
+                                  widget.controlador.invitacionesPendientes.remove(inv);
+                                  setState(() {});
+                                }
+                              )
+                            ]
+                          ),
+                        );
+                      }),
+                      const Divider(),
+                    ],
                     // Lista de Salas Activas
                     ...widget.controlador.usuariosPorSala.keys.map((nombreSala) {
                       final esSeleccionada = _salaSeleccionada == nombreSala;
@@ -161,8 +208,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       child: ListView(
                         children: _obtenerUsuariosActivos().map((nombre) {
                           final estado = widget.controlador.usuariosConectados[nombre]?.name ?? 'active';
+                          final esSeleccionado = _usuarioPrivSeleccionado == nombre;
+
                           return ListTile(
                             dense: true,
+                            selected: esSeleccionado,
+                            selectedTileColor: Colors.purple.withValues(),
                             leading: Icon(
                               Icons.circle,
                               size: 10,
@@ -170,6 +221,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                             ),
                             title: Text(nombre),
                             subtitle: Text(estado, style: const TextStyle(fontSize: 10)),
+
+                            onTap: () {
+                              setState((){
+                                _salaSeleccionada = null;
+                                _usuarioPrivSeleccionado = nombre;
+                              });
+                            }
                           );
                         }).toList(),
                       ),
@@ -189,6 +247,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                         itemBuilder: (contexto, index) {
                           final msj = _obtenerHistorialActual()[index];
 
+                          //Se manda un mensaje público
                           if (msj is PublicTextFromMsj) {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8.0),
@@ -199,6 +258,41 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                                     TextSpan(
                                       text: '${msj.username}: ',
                                       style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(text: msj.text),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          else if (msj is RoomTextFromMsj) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(color: Colors.black, fontSize: 16),
+                                  children: [
+                                    TextSpan(
+                                      text: '${msj.username}: ',
+                                      // Le pongo un color para que los diferencies de los públicos, si quieres
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple), 
+                                    ),
+                                    TextSpan(text: msj.text),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          else if(msj is TextFromMsj){
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(color: Colors.black, fontSize: 16),
+                                  children: [
+                                    TextSpan(
+                                      text: '[Privado de ${msj.username}]: ',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple),
                                     ),
                                     TextSpan(text: msj.text),
                                   ],
@@ -248,27 +342,113 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   }
 
   List<String> _obtenerUsuariosActivos() {
-    if(_salaSeleccionada == null) {
+    if (_salaSeleccionada == null) {
       return widget.controlador.usuariosConectados.keys.toList();
     }
-
-    return widget.controlador.usuariosPorSala[_salaSeleccionada]?.keys.toList() ?? <String>[];
+    return widget.controlador.usuariosPorSala[_salaSeleccionada]?.keys.toList() ?? [];
   }
 
   List<dynamic> _obtenerHistorialActual() {
-    if(_salaSeleccionada == null) {
+    // Si hay un chat privado activo, mostramos los mensajes con ese usuario
+    if (_usuarioPrivSeleccionado != null) {
+      return widget.controlador.chatPrivados[_usuarioPrivSeleccionado] ?? [];
+    }
+
+    // Si no hay sala seleccionada, mostramos el chat general
+    if (_salaSeleccionada == null) {
       return widget.controlador.historialPublicoChat;
     }
+
+    // De lo contrario, el historial de la sala activa
     return widget.controlador.historialSalas[_salaSeleccionada] ?? [];
   }
 
   void _enviarMsj() {
     final txt = _inputControl.text.trim();
-    if(txt.isNotEmpty && _salaSeleccionada == null) {
+    if(txt.isEmpty){
+      return;
+    }
+
+    if(_usuarioPrivSeleccionado != null) {
+      widget.controlador.mandarTxtPriv(_usuarioPrivSeleccionado!, txt);
+    }else if(_salaSeleccionada == null) {
       widget.controlador.mandarTextoPublico(txt);
-    }else {
+    }else{
       widget.controlador.mandarTxtSala(_salaSeleccionada!, txt);
     }
+
     _inputControl.clear();
+  }
+
+  void _mostrarDialogoInvitacion(BuildContext context, String roomname){
+    final todosLosUsuarios = widget.controlador.usuariosConectados.keys.toList();
+    final usuariosEnSala = widget.controlador.usuariosPorSala[roomname]?.keys.toList() ?? [];
+
+    final usuariosDisponibles = todosLosUsuarios.where((u)=> 
+      !usuariosEnSala.contains(u) && u != widget.controlador.miUsuario
+    ).toList();
+
+    if (usuariosDisponibles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay usuarios nuevos disponibles para invitar.')),
+      );
+      return;
+    }
+
+    List<String> seleccionados = [];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Invitar a #$roomname'),
+              content: SizedBox(
+                width: 300,
+                height: 300,
+                child: ListView.builder(
+                  itemCount: usuariosDisponibles.length,
+                  itemBuilder: (context, index) {
+                    final usuario = usuariosDisponibles[index];
+                    return CheckboxListTile(
+                      title: Text(usuario),
+                      value: seleccionados.contains(usuario),
+                      onChanged: (bool? checked) {
+                        setDialogState(() {
+                          if (checked == true) {
+                            seleccionados.add(usuario);
+                          } else {
+                            seleccionados.remove(usuario);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (seleccionados.isNotEmpty) {
+                      widget.controlador.invitarSala(roomname, seleccionados);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Invitación enviada a ${seleccionados.length} usuario(s).')),
+                      );
+                    }
+                  },
+                  child: const Text('Invitar'),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
   }
 }

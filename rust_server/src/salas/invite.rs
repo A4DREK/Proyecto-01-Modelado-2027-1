@@ -30,7 +30,11 @@ pub async fn procesar(
 
     //Si el usuario no esta en la sala
     if !sala.miembros.contains(&emisor) {
-        return None;
+        return Some(MensajesDeSalida::RESPONSE {
+            operation: Operacion::INVITE,
+            resultado: ResultadoOperacion::NOT_JOINED,
+            extra: Some(emisor),
+        });
     }
 
     //Valida a todos los usuarios que esten en la sala

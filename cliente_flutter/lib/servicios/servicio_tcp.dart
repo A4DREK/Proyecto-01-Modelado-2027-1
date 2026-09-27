@@ -43,16 +43,22 @@ class TcpServicio {
       return;
     };
 
+    print('Se recibió el server $lineaProcesada');
+
     try{
       //Se hace el mapeo a Json 
       final dynamic decoded = jsonDecode(lineaProcesada);
             if (decoded is Map) {
               final Map<String, dynamic> jsonMap = Map<String, dynamic>.from(decoded);
               final serverMessage = MensajeServer.fromJson(jsonMap);
+
+              print('Se convitió el objeto ${serverMessage.runtimeType}');
               _mensajeControlador.add(serverMessage);
             }
 
     }catch(e) {
+      print("Error en la decoficiación del JSON: $e");
+      print('Json Problema: $lineaProcesada');
       _mensajeControlador.addError('Error en la decodificación');
     }
   }

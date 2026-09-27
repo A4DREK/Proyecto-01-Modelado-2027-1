@@ -108,6 +108,7 @@ class Controlador extends ChangeNotifier {
         break;
       
       case TextFromMsj textoPriv :
+
         chatPrivados
           .putIfAbsent(textoPriv.username, () => [] )
           .add(textoPriv);
@@ -121,6 +122,7 @@ class Controlador extends ChangeNotifier {
       
       case InvitationMsj invitacion: 
         if(!invitacionesPendientes.any((inv) => inv.roomname == invitacion.roomname)) {
+          invitacionesPendientes.add(invitacion);
           _tcpServicio.mandarComando(RoomUsersComando(roomname: invitacion.roomname));
         }
         notifyListeners();
@@ -187,6 +189,7 @@ class Controlador extends ChangeNotifier {
     chatPrivados.putIfAbsent(usuarioDestino, () => []).add(
       TextFromMsj(username: miUsuario ?? 'Yo', text: texto),
     );
+
     notifyListeners();
   }
 
