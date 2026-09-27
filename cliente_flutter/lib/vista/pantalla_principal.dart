@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../controlador/controlador.dart';
 import '../modelos/mensajes_server.dart';
+import 'widgets/selector_estado.dart';
 
 class ChatApp extends StatelessWidget {
   final Controlador controlador;
@@ -45,6 +46,7 @@ class PantallaPrincipal extends StatelessWidget {
             foregroundColor: Colors.white,
 
             actions: [
+              SelectorEstado(controlador: controlador),
               IconButton(
                 icon: const Icon(Icons.exit_to_app),
                 onPressed: () {

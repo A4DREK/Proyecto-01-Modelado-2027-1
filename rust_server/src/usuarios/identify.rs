@@ -9,7 +9,9 @@ pub async fn procesar(
     nuevo_usuario: String,
     tx_cliente: mpsc::UnboundedSender<MensajesDeSalida>,
 ) -> Option<MensajesDeSalida> {
-    if nuevo_usuario.chars().count() > 8 {
+    if nuevo_usuario.chars().count() > 8 
+        //REVISAR SI EL USUARIO YA SE IDENTIFICÓ
+         {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::INVALID,
             resultado: ResultadoOperacion::INVALID,

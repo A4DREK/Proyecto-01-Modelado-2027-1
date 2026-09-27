@@ -160,6 +160,14 @@ class Controlador extends ChangeNotifier {
 
   //Estos métodos son para el envio de las acciones a la red, todo lo asíncrono y así :p
   void cambiarEstado(EstadoUsuario nuevoEstado) {
+    miEstado = nuevoEstado;
+
+    if(miUsuario != null){
+       usuariosConectados[miUsuario!] = nuevoEstado;
+    }
+
+    notifyListeners();
+
     _tcpServicio.mandarComando(StatusComando(estado: nuevoEstado));
   }
 
