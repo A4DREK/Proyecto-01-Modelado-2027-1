@@ -136,7 +136,7 @@ class RoomUsersComando implements ClienteComando {
 
   @override
   Map<String, dynamic> toJson() => {
-    'type' : 'Room_Users',
+    'type' : 'ROOM_USERS',
     'roomname': roomname,
   };
 }

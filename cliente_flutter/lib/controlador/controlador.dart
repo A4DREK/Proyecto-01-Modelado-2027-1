@@ -94,7 +94,7 @@ class Controlador extends ChangeNotifier {
         }
 
         for(final miembrosSala in usuariosPorSala.values) {
-          if(historialSalas.containsKey(nuevoStatus.username)) {
+          if(miembrosSala.containsKey(nuevoStatus.username)) {
             miembrosSala[nuevoStatus.username] = nuevoStatus.status;
           }
         }
@@ -140,8 +140,8 @@ class Controlador extends ChangeNotifier {
 
       case LeftRoomMsj salioSala :
         if(salioSala.username == miUsuario) {
-          usuariosPorSala.remove(salioSala.username);
-          historialSalas.remove(salioSala.username);
+          usuariosPorSala.remove(salioSala.roomname);
+          historialSalas.remove(salioSala.roomname);
         }else {
           usuariosPorSala[salioSala.roomname]?.remove(salioSala.username);
         }
@@ -191,14 +191,17 @@ class Controlador extends ChangeNotifier {
   }
 
   void crearSala(String roomname) {
+    _inicializarYUnirser(roomname);
     _tcpServicio.mandarComando(NewRoomComando(roomname: roomname));
   }
 
   void invitarSala(String roomname, List<String> usernames) {
+    _inicializarYUnirser(roomname);
     _tcpServicio.mandarComando(InviteComando(roomname: roomname, usersnames: usernames));
   }
 
   void entrarSala(String roomname) {
+    _inicializarYUnirser(roomname);
     _tcpServicio.mandarComando(JoinRoomComando(roomname: roomname));
   }
 
@@ -218,6 +221,9 @@ class Controlador extends ChangeNotifier {
 
   void salirSala(String roomname) {
     _tcpServicio.mandarComando(LeaveRoomComando(roomname: roomname));
+    usuariosPorSala.remove(roomname);
+    historialSalas.remove(roomname);
+    notifyListeners();
   }
 
   void desconectar() {
@@ -226,6 +232,19 @@ class Controlador extends ChangeNotifier {
     }
     _tcpServicio.desconectar();
     estaConectado = false;
+    notifyListeners();
+  }
+
+  //Método aux para las salas
+  void _inicializarYUnirser(String roomname){
+    usuariosPorSala.putIfAbsent(roomname, () => {});
+    historialSalas.putIfAbsent(roomname, () => []);
+
+    if(miUsuario != null) {
+      usuariosPorSala[roomname]?[miUsuario!] = miEstado;
+    }
+
+    _tcpServicio.mandarComando(RoomUsersComando(roomname: roomname));
     notifyListeners();
   }
 

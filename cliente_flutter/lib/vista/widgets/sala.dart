@@ -1,33 +1,33 @@
 import 'package:flutter/material.dart';
 import '../../controlador/controlador.dart';
 
-void mostrarDialogoNuevaSala(BuildContext context, Controlador controlador) {
+Future<String?> mostrarDialogosSala(BuildContext contexto, Controlador controlador) async {
   final control = TextEditingController();
 
-  showDialog(
-    context: context,
-    builder: (dialogContext) {
+  return showDialog<String>(
+    context: contexto,
+    builder: (dialogoContexto) {
       return AlertDialog(
-        title: const Text('Unirse o Crear Sala'),
+        title: const Text('Unirse o crear nueva sala'),
         content: TextField(
           controller: control,
           autofocus: true,
           decoration: const InputDecoration(
-            hintText: 'Nombre de la sala (Ej. General)',
+            hintText: 'Nombre de la sala ',
             border: OutlineInputBorder(),
           ),
           onSubmitted: (nombreSala) {
-            _procesarEntrada(dialogContext, controlador, nombreSala);
+            _procesarEntrada(dialogoContexto, controlador, nombreSala);
           },
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(dialogoContexto, null),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
-              _procesarEntrada(dialogContext, controlador, control.text);
+              _procesarEntrada(dialogoContexto, controlador, control.text);
             },
             child: const Text('Entrar'),
           ),
@@ -37,11 +37,11 @@ void mostrarDialogoNuevaSala(BuildContext context, Controlador controlador) {
   );
 }
 
-void _procesarEntrada(BuildContext context, Controlador controlador, String nombre) {
+void _procesarEntrada(BuildContext contexto, Controlador controlador, String nombre) {
   final sala = nombre.trim();
-  if (sala.isNotEmpty) {
-    // Si la sala no existe se creará, si existe simplemente se unirá
-    controlador.entrarSala(sala); 
-    Navigator.pop(context);
+
+  if(sala.isNotEmpty) {
+    controlador.entrarSala(sala);
+    Navigator.pop(contexto, sala);
   }
 }

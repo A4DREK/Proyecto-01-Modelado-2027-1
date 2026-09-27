@@ -26,8 +26,9 @@ void main(List<String> args) async {
     
     await controlador.conectarEIdentificar(ip, puerto, username);
      
-  }catch(e) {
+  }catch(e, stackTrace) {
     print('error en la conxión');
+    print('Linea del error: $stackTrace');
     exit(1);
   }
 
