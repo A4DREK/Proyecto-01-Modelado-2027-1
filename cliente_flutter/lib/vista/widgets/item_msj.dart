@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../modelos/mensajes_server.dart';
 
 class ItemMsj extends StatelessWidget {
@@ -10,7 +11,7 @@ class ItemMsj extends StatelessWidget {
   @override
   Widget build(BuildContext contexto) {
     //Si el msj es de texto Publico
-    if(msj is PublicTextFromMsj) {
+    if (msj is PublicTextFromMsj) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
         child: RichText(
@@ -29,14 +30,17 @@ class ItemMsj extends StatelessWidget {
     }
 
     //Si el mensaje es de alguna Sala
-    if(msj is RoomTextFromMsj) {
+    if (msj is RoomTextFromMsj) {
       final esSistema = msj.username == 'Sistema';
-      if(esSistema) {
+      if (esSistema) {
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 6.0),
           alignment: Alignment.center,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 4.0,
+            ),
             decoration: BoxDecoration(
               color: Colors.grey[200],
               borderRadius: BorderRadius.circular(12),
@@ -50,7 +54,7 @@ class ItemMsj extends StatelessWidget {
               ),
             ),
           ),
-        ); 
+        );
       }
 
       return Padding(
@@ -61,7 +65,10 @@ class ItemMsj extends StatelessWidget {
             children: [
               TextSpan(
                 text: '${msj.username}: ',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                ),
               ),
               TextSpan(text: msj.text),
             ],
@@ -80,7 +87,10 @@ class ItemMsj extends StatelessWidget {
             children: [
               TextSpan(
                 text: '[Privado de ${msj.username}]: ',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purple,
+                ),
               ),
               TextSpan(text: msj.text),
             ],

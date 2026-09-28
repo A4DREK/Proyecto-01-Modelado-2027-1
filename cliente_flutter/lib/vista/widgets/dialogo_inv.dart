@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
+
 import '../../controlador/controlador.dart';
 
-void mostarDialogoInvitacion(BuildContext contexto, Controlador controlador, String roomname) {
+void mostarDialogoInvitacion(
+  BuildContext contexto,
+  Controlador controlador,
+  String roomname,
+) {
   final todosLosUsuarios = controlador.usuariosConectados.keys.toList();
-  final usuariosSala = controlador.usuariosPorSala[roomname]?.keys.toList() ?? [];
+  final usuariosSala =
+      controlador.usuariosPorSala[roomname]?.keys.toList() ?? [];
 
-  final usuariosDisponibles = todosLosUsuarios.where((u) =>
-    !usuariosSala.contains(u) && u != controlador.miUsuario
-  ).toList();
+  final usuariosDisponibles = todosLosUsuarios
+      .where((u) => !usuariosSala.contains(u) && u != controlador.miUsuario)
+      .toList();
 
-  if(usuariosDisponibles.isEmpty){
+  if (usuariosDisponibles.isEmpty) {
     ScaffoldMessenger.of(contexto).showSnackBar(
-      const SnackBar(content: Text('No hay usuarios disponibles para invitar a la sala')),
+      const SnackBar(
+        content: Text('No hay usuarios disponibles para invitar a la sala'),
+      ),
     );
     return;
   }
@@ -37,13 +45,13 @@ void mostarDialogoInvitacion(BuildContext contexto, Controlador controlador, Str
                     value: seleccionados.contains(usuario),
                     onChanged: (bool? check) {
                       setDialogState(() {
-                        if(check == true) {
+                        if (check == true) {
                           seleccionados.add(usuario);
                         } else {
                           seleccionados.remove(usuario);
                         }
                       });
-                    }
+                    },
                   );
                 },
               ),
@@ -51,11 +59,15 @@ void mostarDialogoInvitacion(BuildContext contexto, Controlador controlador, Str
             actions: [
               TextButton(
                 onPressed: () {
-                  if(seleccionados.isNotEmpty){
+                  if (seleccionados.isNotEmpty) {
                     controlador.invitarSala(roomname, seleccionados);
                     Navigator.pop(contexto);
                     ScaffoldMessenger.of(contexto).showSnackBar(
-                      SnackBar(content: Text('Invitación enviada a: ${seleccionados.length} usuario(s)')),
+                      SnackBar(
+                        content: Text(
+                          'Invitación enviada a: ${seleccionados.length} usuario(s)',
+                        ),
+                      ),
                     );
                   }
                 },

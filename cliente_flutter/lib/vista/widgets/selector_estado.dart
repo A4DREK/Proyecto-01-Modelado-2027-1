@@ -1,5 +1,6 @@
 import 'package:cliente_flutter/modelos/protocolo.dart';
 import 'package:flutter/material.dart';
+
 import '../../controlador/controlador.dart';
 
 class SelectorEstado extends StatelessWidget {
@@ -9,14 +10,14 @@ class SelectorEstado extends StatelessWidget {
   const SelectorEstado({super.key, required this.controlador});
 
   Color _obetenerColorEstado(String estado) {
-    switch(estado.toLowerCase()){
-      case 'active' :
+    switch (estado.toLowerCase()) {
+      case 'active':
         return Colors.green;
-      case 'busy' :
+      case 'busy':
         return Colors.red;
-      case 'away' :
+      case 'away':
         return Colors.orangeAccent;
-      default: 
+      default:
         return Colors.grey;
     }
   }
@@ -31,11 +32,11 @@ class SelectorEstado extends StatelessWidget {
           dropdownColor: Colors.deepPurple,
           icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
           onChanged: (EstadoUsuario? nuevoEstado) {
-            if(nuevoEstado != null) {
+            if (nuevoEstado != null) {
               controlador.cambiarEstado(nuevoEstado);
             }
           },
-          items:  EstadoUsuario.values.map((EstadoUsuario estado) {
+          items: EstadoUsuario.values.map((EstadoUsuario estado) {
             return DropdownMenuItem<EstadoUsuario>(
               value: estado,
               child: Row(
@@ -43,7 +44,7 @@ class SelectorEstado extends StatelessWidget {
                   Icon(
                     Icons.circle,
                     size: 12,
-                    color: _obetenerColorEstado(estado.name)
+                    color: _obetenerColorEstado(estado.name),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -58,5 +59,4 @@ class SelectorEstado extends StatelessWidget {
       ),
     );
   }
-
 }

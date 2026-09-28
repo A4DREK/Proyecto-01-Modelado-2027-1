@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../controlador/controlador.dart';
 import 'sala.dart';
 
@@ -7,7 +8,7 @@ class PanelLateral extends StatelessWidget {
   final String? salaSelec;
   final String? usuarioPrivSelec;
   final Function(String?) onSelecSala;
-  final Function(String?) onSelecUsuarioPriv; 
+  final Function(String?) onSelecUsuarioPriv;
 
   //el constructor del Panel Lateral
   const PanelLateral({
@@ -21,7 +22,7 @@ class PanelLateral extends StatelessWidget {
 
   //Se devuelve la lista de los usuarios activos
   List<String> _obtenerUsuariosActivos() {
-    if(salaSelec == null) {
+    if (salaSelec == null) {
       return controlador.usuariosConectados.keys.toList();
     }
     return controlador.usuariosPorSala[salaSelec]?.keys.toList() ?? [];
@@ -41,13 +42,19 @@ class PanelLateral extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Salas', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Salas',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 IconButton(
                   icon: const Icon(Icons.add, size: 20),
                   tooltip: 'Unirse o crear Sala',
                   onPressed: () async {
-                    final nuevaSala = await mostrarDialogosSala(contexto, controlador);
-                    if(nuevaSala != null) {
+                    final nuevaSala = await mostrarDialogosSala(
+                      contexto,
+                      controlador,
+                    );
+                    if (nuevaSala != null) {
                       controlador.crearSala(nuevaSala);
                       onSelecSala(nuevaSala);
                     }
@@ -62,7 +69,7 @@ class PanelLateral extends StatelessWidget {
             dense: true,
             selected: salaSelec == null && usuarioPrivSelec == null,
             selectedTileColor: Colors.deepPurple.withValues(),
-            leading: const Icon(Icons.public, size: 18 ),
+            leading: const Icon(Icons.public, size: 18),
             title: const Text('Chat Generalisimo'),
             onTap: () {
               onSelecUsuarioPriv(null);
@@ -71,11 +78,16 @@ class PanelLateral extends StatelessWidget {
           ),
 
           //Para la parte de la sección de las invitaciones
-          if(controlador.invitacionesPendientes.isNotEmpty) ...[
+          if (controlador.invitacionesPendientes.isNotEmpty) ...[
             const Divider(),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-              child: Text('Invitaciones', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+              child: Text(
+                'Invitaciones',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
               ),
             ),
             ...controlador.invitacionesPendientes.map((inv) {
@@ -88,21 +100,33 @@ class PanelLateral extends StatelessWidget {
                   children: [
                     //Se escogió removeWhere porque se eliminan todos los elementos que pasan el "test"
                     //https://flutterbyexample.com/lesson/removing-elements-remove-clear-remove-where
-                    //Si se decide unirse a la sala 
+                    //Si se decide unirse a la sala
                     IconButton(
-                      icon: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                      icon: const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 20,
+                      ),
                       tooltip: 'Unirse',
                       onPressed: () {
-                        controlador.invitacionesPendientes.removeWhere((i) => i.roomname == inv.roomname);
+                        controlador.invitacionesPendientes.removeWhere(
+                          (i) => i.roomname == inv.roomname,
+                        );
                         onSelecSala(inv.roomname);
                       },
                     ),
-                    //Si se rechaza la invitación 
+                    //Si se rechaza la invitación
                     IconButton(
-                      icon: const Icon(Icons.cancel, color: Colors.redAccent, size: 20),
+                      icon: const Icon(
+                        Icons.cancel,
+                        color: Colors.redAccent,
+                        size: 20,
+                      ),
                       tooltip: 'Rechazar',
                       onPressed: () {
-                        controlador.invitacionesPendientes.removeWhere((i) => i.roomname == inv.roomname);
+                        controlador.invitacionesPendientes.removeWhere(
+                          (i) => i.roomname == inv.roomname,
+                        );
                         onSelecSala(salaSelec);
                       },
                     ),
@@ -130,7 +154,7 @@ class PanelLateral extends StatelessWidget {
               onTap: () {
                 onSelecUsuarioPriv(null);
                 onSelecSala(nombreSala);
-              }
+              },
             );
           }),
           const Divider(),
@@ -146,7 +170,8 @@ class PanelLateral extends StatelessWidget {
           Expanded(
             child: ListView(
               children: _obtenerUsuariosActivos().map((nombre) {
-                final estado = controlador.usuariosConectados[nombre]?.name ?? 'active';
+                final estado =
+                    controlador.usuariosConectados[nombre]?.name ?? 'active';
                 final esSelec = usuarioPrivSelec == nombre;
 
                 return ListTile(
@@ -156,7 +181,7 @@ class PanelLateral extends StatelessWidget {
                   leading: Icon(
                     Icons.circle,
                     size: 10,
-                    color: estado == 'active'? Colors.green : Colors.orange,
+                    color: estado == 'active' ? Colors.green : Colors.orange,
                   ),
                   title: Text(nombre),
                   subtitle: Text(estado, style: const TextStyle(fontSize: 10)),
@@ -173,10 +198,3 @@ class PanelLateral extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-

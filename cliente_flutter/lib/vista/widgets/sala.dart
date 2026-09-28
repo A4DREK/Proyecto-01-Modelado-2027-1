@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../../controlador/controlador.dart';
 
-Future<String?> mostrarDialogosSala(BuildContext contexto, Controlador controlador) async {
+Future<String?> mostrarDialogosSala(
+  BuildContext contexto,
+  Controlador controlador,
+) async {
   final control = TextEditingController();
 
   return showDialog<String>(
@@ -37,10 +41,14 @@ Future<String?> mostrarDialogosSala(BuildContext contexto, Controlador controlad
   );
 }
 
-void _procesarEntrada(BuildContext contexto, Controlador controlador, String nombre) {
+void _procesarEntrada(
+  BuildContext contexto,
+  Controlador controlador,
+  String nombre,
+) {
   final sala = nombre.trim();
 
-  if(sala.isNotEmpty) {
+  if (sala.isNotEmpty) {
     controlador.entrarSala(sala);
     Navigator.pop(contexto, sala);
   }
