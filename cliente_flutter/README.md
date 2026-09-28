@@ -1,17 +1,14 @@
-# cliente_flutter
+===========================================
+CLIENTE_FLUTTER (CLIENTE TCP PROYECTO MYP)
+===========================================
 
-A new Flutter project.
+Para correr el Cliente obviamente necesitas tener instalado el FrameWork de flutter
+Si no checar la página oficial para ver como instalarlo de acuerdo con el OS que estes o distro de Linux
 
-## Getting Started
+para correr el cliente como debe de (yo así lo estuve probando) utilizar el siguiente comando 
 
-This project is a starting point for a Flutter application.
+flutter run -d <Os> -a <IP> -a <Puerto> -a <Username>
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Nota: EL SERVER DEBE DE ESTAR LEVANTADO ANTES DE CORRER EL CLIENTE DUH
+Nota2: Si se quieren ocupar distintos clientes, abrir diferentes ventanas de terminal y utiizar el mimso comando
+(Con otro nombre de usuario lol)
