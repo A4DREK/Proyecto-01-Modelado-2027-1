@@ -15,7 +15,7 @@ pub async fn procesar(
         ref salas,
     } = *memoria;
 
-    let roomname_limpio =roomname.trim();
+    let roomname_limpio = roomname.trim();
 
     if roomname_limpio.is_empty() || text.trim().is_empty() {
         return Some(MensajesDeSalida::RESPONSE {

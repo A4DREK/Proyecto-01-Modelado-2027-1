@@ -1,10 +1,10 @@
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
-use tokio::net::{TcpListener, TcpStream};
 use rust_server::estado::EstadoServidor;
 use rust_server::server::Server;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 
 const NUM_CLIENTES: usize = 300;
@@ -44,9 +44,7 @@ async fn test_stress_servidor() {
     tokio::time::sleep(Duration::from_millis(500)).await;
 
     println!("Sala de pruebas");
-    let admin_socket = TcpStream::connect(&host)
-        .await
-        .expect("Fallo en el admin");
+    let admin_socket = TcpStream::connect(&host).await.expect("Fallo en el admin");
 
     let (_admin_lector, mut admin_escritor) = admin_socket.into_split();
 

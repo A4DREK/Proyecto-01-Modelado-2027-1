@@ -2,7 +2,7 @@
 use crate::{
     estado::EstadoCompartido,
     manejador,
-    protocolo::{MensajesDeSalida, ResultadoOperacion, Operacion},
+    protocolo::{MensajesDeSalida, Operacion, ResultadoOperacion},
     usuarios,
 };
 

@@ -11,7 +11,7 @@ pub async fn procesar(
     let roomname_limpio = roomname.trim();
 
     //Si es la cadena vacia
-    if roomname_limpio.is_empty(){
+    if roomname_limpio.is_empty() {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::JOIN_ROOM,
             resultado: ResultadoOperacion::INVALID,
