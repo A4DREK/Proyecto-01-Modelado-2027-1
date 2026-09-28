@@ -11,7 +11,9 @@ pub async fn procesar(
 ) -> Option<MensajesDeSalida> {
     let mut memoria = estado.lock().await;
 
-    if roomname.chars().count() > 16 {
+    let roomname_limpio = roomname.trim();
+
+    if roomname_limpio.chars().count() > 16 || roomname_limpio.is_empty() {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::INVALID,
             resultado: ResultadoOperacion::INVALID,
@@ -19,8 +21,10 @@ pub async fn procesar(
         });
     }
 
+    let roomname_final = roomname_limpio.to_string();
+
     //Si ya existe la sala
-    if memoria.salas.contains_key(&roomname) {
+    if memoria.salas.contains_key(&roomname_final) {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::NEW_ROOM,
             resultado: ResultadoOperacion::ROOM_ALREADY_EXISTS,

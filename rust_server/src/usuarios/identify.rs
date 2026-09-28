@@ -9,9 +9,19 @@
         nuevo_usuario: String,
         tx_cliente: mpsc::UnboundedSender<MensajesDeSalida>,
     ) -> Option<MensajesDeSalida> {
-        if nuevo_usuario.chars().count() > 8 
+
+        if nombre_actual.is_some() {
+                        return Some(MensajesDeSalida::RESPONSE {
+                operation: Operacion::INVALID,
+                resultado: ResultadoOperacion::INVALID,
+                extra: None,
+            });   
+        }
+
+        let usuario_limpio = nuevo_usuario.trim().to_string();
+
+        if usuario_limpio.chars().count() > 8 || usuario_limpio.is_empty() {
             //REVISAR SI EL USUARIO YA SE IDENTIFICÓ
-            {
             return Some(MensajesDeSalida::RESPONSE {
                 operation: Operacion::INVALID,
                 resultado: ResultadoOperacion::INVALID,
@@ -23,16 +33,16 @@
         let mut memoria = estado.lock().await;
 
         //Ver si el nombre no existe
-        if memoria.usuarios.contains_key(&nuevo_usuario) {
+        if memoria.usuarios.contains_key(&usuario_limpio) {
             return Some(MensajesDeSalida::RESPONSE {
                 operation: Operacion::IDENTIFY,
                 resultado: ResultadoOperacion::USER_ALREADY_EXISTS,
-                extra: Some(nuevo_usuario),
+                extra: Some(usuario_limpio),
             });
         }
 
         let msj_notificacion = MensajesDeSalida::NEW_USER {
-            username: nuevo_usuario.clone(),
+            username: usuario_limpio.clone(),
         };
 
         for (tx_destino, _estado) in memoria.usuarios.values() {
@@ -41,11 +51,11 @@
 
         //Si no existe
         memoria.usuarios.insert(
-            nuevo_usuario.clone(),
+            usuario_limpio.clone(),
             (tx_cliente.clone(), EstadoUsuario::ACTIVE),
         );
 
-        *nombre_actual = Some(nuevo_usuario.clone());
+        *nombre_actual = Some(usuario_limpio.clone());
 
         //Retorno del mensaje
         Some(MensajesDeSalida::RESPONSE {

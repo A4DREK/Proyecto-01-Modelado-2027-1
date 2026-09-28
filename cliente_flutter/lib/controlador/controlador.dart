@@ -36,6 +36,9 @@ class Controlador extends ChangeNotifier {
   //Invitaciones
   final List<InvitationMsj> invitacionesPendientes = [];
 
+  final _errorControl = StreamController<String>.broadcast();
+  Stream<String> get streamErrores => _errorControl.stream;
+
   ResponseMsj? ultimaRespuesta; 
 
   //En esta parte inicia el server y las conexiones
@@ -75,6 +78,10 @@ class Controlador extends ChangeNotifier {
         ultimaRespuesta = respuesta;
         if(respuesta.operation == 'IDENTIFY' && respuesta.result == 'SUCCESS') {
           estaConectado = true;
+        }
+        if(respuesta.result != 'SUCCESS'){
+          final msjError = _mapearMsjError(respuesta);
+          _errorControl.add(msjError);
         }
         notifyListeners();
         break;
@@ -146,6 +153,14 @@ class Controlador extends ChangeNotifier {
           historialSalas.remove(salioSala.roomname);
         }else {
           usuariosPorSala[salioSala.roomname]?.remove(salioSala.username);
+
+          historialSalas[salioSala.roomname]?.add(
+            RoomTextFromMsj(
+              roomname: salioSala.roomname,
+              username: 'Sistema',
+              text: '${salioSala.username} ha salido de la sala',
+            ),
+          );
         }
         notifyListeners();
         break;
@@ -155,6 +170,20 @@ class Controlador extends ChangeNotifier {
         notifyListeners();
         break;
       
+      case JoinedRoomMsj() :
+        usuariosPorSala.putIfAbsent(msj.roomname, () => {});
+
+        usuariosPorSala[msj.roomname]?[msj.username] = EstadoUsuario.active;
+
+        historialSalas.putIfAbsent(msj.roomname, () => []).add(
+          RoomTextFromMsj(
+            roomname: msj.roomname,
+            username: 'Sistema',
+            text: '${msj.username} se ha unido a la sala'
+          ),
+        );
+
+
       default:
         break; //Falta implementar el resto de los msj 
     }
@@ -251,10 +280,29 @@ class Controlador extends ChangeNotifier {
     notifyListeners();
   }
 
+  //Método aux para el mapeo del error
+  String _mapearMsjError(ResponseMsj respuesta){
+    final codigo = respuesta.result.toUpperCase().trim();
+    final detalleExtra = respuesta.extra != null ? '(${respuesta.extra})' : '' ;
+
+    return switch (codigo) {
+      'ROOM_ALREADY_EXISTS' => 'La sala ya existe. Elige otro nombre.',
+      'NO_SUCH_USER'        => 'El usuario no existe o se desconectó$detalleExtra.',
+      'NO_SUCH_ROOM'        => 'La sala no existe$detalleExtra.',
+      'NOT_JOINED'          => 'No formas parte de esta sala.',
+      'NOT_INVITED'         => 'No has sido invitado a esta sala.',
+      'USER_ALREADY_EXISTS' => 'El nombre de usuario ya está ocupado.',
+      'NOT_IDENTIFIED'      => 'Sesión no válida o no identificada.',
+      'INVALID'             => 'Comando o formato de datos inválido.',
+      _                     => 'Operación fallida en ${respuesta.operation}: $codigo',
+    };
+  }
+
   @override
   void dispose() {
     _mensajesSubscripcion?.cancel();
     _tcpServicio.desechar();
+    _errorControl.close();
     super.dispose();
   }
 }

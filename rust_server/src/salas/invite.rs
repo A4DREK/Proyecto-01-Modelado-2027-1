@@ -56,7 +56,7 @@ pub async fn procesar(
 
     for usuario in usernames {
         //Por si hay algún duplicado o si ya está en la sala
-        if sala.miembros.contains(&usuario) || sala.invitados.contains(&usuario) {
+        if sala.miembros.contains(&usuario) {
             continue;
         }
 

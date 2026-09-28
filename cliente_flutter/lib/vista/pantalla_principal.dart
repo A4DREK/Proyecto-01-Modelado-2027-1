@@ -266,6 +266,28 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                             );
                           }
                           else if (msj is RoomTextFromMsj) {
+                            final esSistema = msj.username == 'Sistema';
+                            if(esSistema){
+                              return Container(
+                                margin: const EdgeInsets.symmetric(vertical: 6.0),
+                                alignment: Alignment.center,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    msj.text,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8.0),
                               child: RichText(
