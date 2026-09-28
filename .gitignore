@@ -80,3 +80,43 @@ app.*.map.json
 ! .env.example
 *.pem
 *.key
+
+#Latex
+# Archivos auxiliares de compilación de LaTeX
+*.aux
+*.bcf
+*.fls
+*.fdb_latexmk
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.synctex.gz
+*.synctex.gz(busy)
+*.xdv
+
+# Archivos de Bibliografía (BibTeX / Biber)
+*.bbl
+*.blg
+*.run.xml
+
+# Archivos temporales de presentaciones (Beamer)
+*.nav
+*.snm
+*.vrb
+
+# Paquetes de código (Minted)
+_minted*/
+*.pyg
+
+# Archivos generados por el editor / OS
+.DS_Store
+.vscode/
+
+# Archivo PDF compilado 
+# (Quita el '#' de la siguiente línea si NO quieres que el PDF se suba a GitHub)
+# *.pdf
