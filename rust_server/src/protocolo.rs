@@ -76,7 +76,7 @@ pub enum Operacion {
     TEXT,
     NEW_ROOM,
     INVITE,
-    JOINED_ROOM,
+    JOIN_ROOM,
     ROOM_USERS,
     ROOM_TEXT,
     LEAVE_ROOM,

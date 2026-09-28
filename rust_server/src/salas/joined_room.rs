@@ -8,6 +8,17 @@ pub async fn procesar(
     roomname: String,
     emisor: String,
 ) -> Option<MensajesDeSalida> {
+    let roomname_limpio = roomname.trim();
+
+    //Si es la cadena vacia
+    if roomname_limpio.is_empty(){
+        return Some(MensajesDeSalida::RESPONSE {
+            operation: Operacion::JOIN_ROOM,
+            resultado: ResultadoOperacion::INVALID,
+            extra: None,
+        });
+    }
+
     let mut memoria = estado.lock().await;
     let EstadoServidor {
         ref usuarios,
@@ -15,11 +26,11 @@ pub async fn procesar(
     } = *memoria;
 
     //Valida que exista la sala
-    let sala = match salas.get_mut(&roomname) {
+    let sala = match salas.get_mut(roomname_limpio) {
         Some(s) => s,
         None => {
             return Some(MensajesDeSalida::RESPONSE {
-                operation: Operacion::JOINED_ROOM,
+                operation: Operacion::JOIN_ROOM,
                 resultado: ResultadoOperacion::NO_SUCH_ROOM,
                 extra: Some(roomname),
             });
@@ -29,7 +40,7 @@ pub async fn procesar(
     //validar que el usuario haya sido invitado
     if !sala.invitados.contains(&emisor) {
         return Some(MensajesDeSalida::RESPONSE {
-            operation: Operacion::JOINED_ROOM,
+            operation: Operacion::JOIN_ROOM,
             resultado: ResultadoOperacion::NOT_INVITED,
             extra: Some(roomname),
         });
@@ -51,7 +62,7 @@ pub async fn procesar(
     }
 
     Some(MensajesDeSalida::RESPONSE {
-        operation: Operacion::JOINED_ROOM,
+        operation: Operacion::JOIN_ROOM,
         resultado: ResultadoOperacion::SUCCESS,
         extra: Some(roomname),
     })

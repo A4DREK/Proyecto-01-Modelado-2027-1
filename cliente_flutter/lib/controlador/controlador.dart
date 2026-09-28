@@ -79,9 +79,11 @@ class Controlador extends ChangeNotifier {
         if(respuesta.operation == 'IDENTIFY' && respuesta.result == 'SUCCESS') {
           estaConectado = true;
         }
-        if(respuesta.result != 'SUCCESS'){
-          final msjError = _mapearMsjError(respuesta);
-          _errorControl.add(msjError);
+        if((respuesta.operation == 'NEW_ROOM' || respuesta.operation == 'JOIN_ROOM') && respuesta.extra != null ){
+          _inicializarSala(respuesta.extra!);
+        }else {
+          final msjErr = _mapearMsjError(respuesta);
+          _errorControl.add(msjErr);
         }
         notifyListeners();
         break;
@@ -122,8 +124,8 @@ class Controlador extends ChangeNotifier {
         notifyListeners();
         break;
 
-      case PublicTextFromMsj() : 
-        historialPublicoChat.add(msj);
+      case PublicTextFromMsj msjPub : 
+        historialPublicoChat.add(msjPub);
         notifyListeners();
         break;
       
@@ -165,8 +167,11 @@ class Controlador extends ChangeNotifier {
         notifyListeners();
         break;
 
-      case DisconnectedMsj() :
-        usuariosConectados.remove(msj.username);
+      case DisconnectedMsj msjDisco :
+        usuariosConectados.remove(msjDisco.username);
+        for(final miembrosSala in usuariosPorSala.values) {
+          miembrosSala.remove(msjDisco.username);
+        }
         notifyListeners();
         break;
       
@@ -183,7 +188,8 @@ class Controlador extends ChangeNotifier {
           ),
         );
 
-
+        notifyListeners();
+        break;
       default:
         break; //Falta implementar el resto de los msj 
     }
@@ -296,6 +302,17 @@ class Controlador extends ChangeNotifier {
       'INVALID'             => 'Comando o formato de datos inválido.',
       _                     => 'Operación fallida en ${respuesta.operation}: $codigo',
     };
+  }
+
+  void _inicializarSala(String roomname) {
+    usuariosPorSala.putIfAbsent(roomname, () => {});
+    historialSalas.putIfAbsent(roomname, () => []);
+
+    if (miUsuario != null) {
+      usuariosPorSala[roomname]?[miUsuario!] = miEstado;
+    }
+
+    _tcpServicio.mandarComando(RoomUsersComando(roomname: roomname));
   }
 
   @override

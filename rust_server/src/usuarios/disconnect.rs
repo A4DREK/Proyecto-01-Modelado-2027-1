@@ -38,6 +38,8 @@ pub async fn procesar(
         sala.invitados.remove(&emisor);
     }
 
+    salas.retain(|_, sala| !sala.miembros.is_empty());
+
     let msj_desconectado = MensajesDeSalida::DISCONNECTED { username: emisor };
 
     for (tx_destino, _) in usuarios.values() {

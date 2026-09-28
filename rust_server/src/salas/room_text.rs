@@ -15,6 +15,15 @@ pub async fn procesar(
         ref salas,
     } = *memoria;
 
+    let roomname_limpio =roomname.trim();
+
+    if roomname_limpio.is_empty() || text.trim().is_empty() {
+        return Some(MensajesDeSalida::RESPONSE {
+            operation: Operacion::ROOM_TEXT,
+            resultado: ResultadoOperacion::INVALID,
+            extra: None,
+        });
+    }
     //La sala existe?
     let sala = match salas.get(&roomname) {
         Some(s) => s,
@@ -22,7 +31,7 @@ pub async fn procesar(
             return Some(MensajesDeSalida::RESPONSE {
                 operation: Operacion::ROOM_TEXT,
                 resultado: ResultadoOperacion::NO_SUCH_ROOM,
-                extra: Some(roomname),
+                extra: Some(roomname_limpio.to_string()),
             });
         }
     };
@@ -32,7 +41,7 @@ pub async fn procesar(
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::ROOM_TEXT,
             resultado: ResultadoOperacion::NOT_JOINED,
-            extra: Some(roomname.clone()),
+            extra: Some(roomname_limpio.to_string()),
         });
     }
 

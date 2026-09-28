@@ -162,7 +162,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                                   widget.controlador.invitacionesPendientes.remove(inv);
                                   setState(() {});
                                 }
-                              )
+                              ),
                             ]
                           ),
                         );

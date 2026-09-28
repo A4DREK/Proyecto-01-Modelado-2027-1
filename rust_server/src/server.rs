@@ -2,7 +2,7 @@
 use crate::{
     estado::EstadoCompartido,
     manejador,
-    protocolo::{MensajesDeSalida, ResultadoOperacion},
+    protocolo::{MensajesDeSalida, ResultadoOperacion, Operacion},
     usuarios,
 };
 
@@ -81,11 +81,17 @@ impl Server {
                                         break;
                                     }
 
-                                    if let MensajesDeSalida::RESPONSE { ref resultado, .. } = respuesta
-                                        && (*resultado == ResultadoOperacion::INVALID || *resultado == ResultadoOperacion::NOT_IDENTIFIED) {
-                                            info!("Desconectando cliente por fallo de protocolo: {:?}", resultado);
+                                    if let MensajesDeSalida::RESPONSE { ref operation, ref resultado, ..} = respuesta {
+                                        let identify_erroneo = *operation == Operacion::IDENTIFY && *resultado != ResultadoOperacion::SUCCESS;
+                                        let error_protocolo = *resultado == ResultadoOperacion::INVALID || *resultado == ResultadoOperacion::NOT_IDENTIFIED;
+
+                                        if identify_erroneo || error_protocolo {
+                                            info!("Desconectando al cliente por noob: {:?}: {:?}", operation, resultado);
                                             break;
                                         }
+
+                                    }
+
 
                                 }
 
