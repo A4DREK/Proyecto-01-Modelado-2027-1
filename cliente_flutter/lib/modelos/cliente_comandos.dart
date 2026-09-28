@@ -103,15 +103,15 @@ class NewRoomComando implements ClienteComando {
 //Para el comando de INVITE
 class InviteComando implements ClienteComando {
   final String roomname;
-  final List<String> usersnames;
+  final List<String> usernames;
 
-  InviteComando({required this.roomname, required this.usersnames});
+  InviteComando({required this.roomname, required this.usernames});
 
   @override
   Map<String, dynamic> toJson() => {
     'type': 'INVITE',
     'roomname': roomname,
-    'usernames': usersnames,
+    'usernames': usernames,
   };
 }
 

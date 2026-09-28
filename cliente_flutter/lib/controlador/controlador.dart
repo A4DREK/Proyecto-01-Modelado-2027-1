@@ -41,6 +41,8 @@ class Controlador extends ChangeNotifier {
 
   ResponseMsj? ultimaRespuesta; 
 
+  String? _ultimaSalaSolicitada;
+
   //En esta parte inicia el server y las conexiones
 
   Future<void> conectarEIdentificar(String host, int puerto, String username) async{
@@ -71,20 +73,33 @@ class Controlador extends ChangeNotifier {
   }
 
   void _manejarMsjEntrante(MensajeServer msj) {
+    debugPrint("=== MENSAJE RECIBIDO DEL SERVIDOR: ${msj.type} ===");
     switch (msj) {
 
       ///Caso donde se responden msj
       case ResponseMsj respuesta :
         ultimaRespuesta = respuesta;
-        if(respuesta.operation == 'IDENTIFY' && respuesta.result == 'SUCCESS') {
+
+        final op = respuesta.operation.toUpperCase().trim();
+        final res = respuesta.result.toUpperCase().trim();
+
+        if(op == 'IDENTIFY' && res == 'SUCCESS') {
           estaConectado = true;
         }
-        if((respuesta.operation == 'NEW_ROOM' || respuesta.operation == 'JOIN_ROOM') && respuesta.extra != null ){
-          _inicializarSala(respuesta.extra!);
-        }else {
+
+        if((op == 'NEW_ROOM' || op == 'JOIN_ROOM') && res == 'SUCCESS'){
+          final nombreSala = respuesta.extra ?? _ultimaSalaSolicitada;
+          if(nombreSala != null && nombreSala.isNotEmpty) {
+            _inicializarSala(nombreSala);
+          }else {
+            debugPrint("Error, el server no incluyó el Extra");
+          }
+        }
+        else if (res != 'SUCCESS'){
           final msjErr = _mapearMsjError(respuesta);
           _errorControl.add(msjErr);
         }
+
         notifyListeners();
         break;
 
@@ -130,15 +145,20 @@ class Controlador extends ChangeNotifier {
         break;
       
       case InvitationMsj invitacion: 
-        if(!invitacionesPendientes.any((inv) => inv.roomname == invitacion.roomname)) {
-          invitacionesPendientes.add(invitacion);
-          _tcpServicio.mandarComando(RoomUsersComando(roomname: invitacion.roomname));
-        }
-        notifyListeners();
+        final yaExiste = invitacionesPendientes.any(
+            (inv) => inv.roomname == invitacion.roomname
+          );
+          
+          if (!yaExiste) {
+            invitacionesPendientes.add(invitacion);
+            notifyListeners(); 
+          }
         break;
 
       case RoomUserListMsj listaUsuariosSala:
-        usuariosPorSala[listaUsuariosSala.roomname] = Map.from(listaUsuariosSala.users);
+        final sala = listaUsuariosSala.roomname.trim();
+        usuariosPorSala[sala] = Map.from(listaUsuariosSala.users);
+        historialSalas.putIfAbsent(sala, () => []);
         notifyListeners();
         break;
 
@@ -175,21 +195,29 @@ class Controlador extends ChangeNotifier {
         notifyListeners();
         break;
       
-      case JoinedRoomMsj() :
-        usuariosPorSala.putIfAbsent(msj.roomname, () => {});
+      case JoinedRoomMsj msjEntrar :
 
-        usuariosPorSala[msj.roomname]?[msj.username] = EstadoUsuario.active;
+        final salaLimpia = msjEntrar.roomname.trim();
+        usuariosPorSala.putIfAbsent(salaLimpia, () => {});
 
-        historialSalas.putIfAbsent(msj.roomname, () => []).add(
+        usuariosPorSala[salaLimpia]?[msjEntrar.username] = EstadoUsuario.active;
+
+        historialSalas.putIfAbsent(salaLimpia, () => []);
+        historialSalas[salaLimpia]?.add(
           RoomTextFromMsj(
-            roomname: msj.roomname,
+            roomname: salaLimpia,
             username: 'Sistema',
-            text: '${msj.username} se ha unido a la sala'
+            text: '${msjEntrar.username} se ha unido a la sala'
           ),
         );
 
+        if(msjEntrar.username == miUsuario) {
+          _tcpServicio.mandarComando(RoomUsersComando(roomname: salaLimpia));
+        }
+
         notifyListeners();
         break;
+
       default:
         break; //Falta implementar el resto de los msj 
     }
@@ -229,17 +257,18 @@ class Controlador extends ChangeNotifier {
   }
 
   void crearSala(String roomname) {
-    _inicializarYUnirser(roomname);
-    _tcpServicio.mandarComando(NewRoomComando(roomname: roomname));
+    final salaLimpia = roomname.trim();
+    _ultimaSalaSolicitada = salaLimpia;
+    _tcpServicio.mandarComando(NewRoomComando(roomname: salaLimpia));
   }
 
   void invitarSala(String roomname, List<String> usernames) {
-    _inicializarYUnirser(roomname);
-    _tcpServicio.mandarComando(InviteComando(roomname: roomname, usersnames: usernames));
+    _tcpServicio.mandarComando(InviteComando(roomname: roomname, usernames: usernames));
   }
 
   void entrarSala(String roomname) {
-    _inicializarYUnirser(roomname);
+    final salaLimpia = roomname.trim();
+    _ultimaSalaSolicitada =salaLimpia;
     _tcpServicio.mandarComando(JoinRoomComando(roomname: roomname));
   }
 
@@ -273,18 +302,6 @@ class Controlador extends ChangeNotifier {
     notifyListeners();
   }
 
-  //Método aux para las salas
-  void _inicializarYUnirser(String roomname){
-    usuariosPorSala.putIfAbsent(roomname, () => {});
-    historialSalas.putIfAbsent(roomname, () => []);
-
-    if(miUsuario != null) {
-      usuariosPorSala[roomname]?[miUsuario!] = miEstado;
-    }
-
-    _tcpServicio.mandarComando(RoomUsersComando(roomname: roomname));
-    notifyListeners();
-  }
 
   //Método aux para el mapeo del error
   String _mapearMsjError(ResponseMsj respuesta){
@@ -305,14 +322,17 @@ class Controlador extends ChangeNotifier {
   }
 
   void _inicializarSala(String roomname) {
-    usuariosPorSala.putIfAbsent(roomname, () => {});
-    historialSalas.putIfAbsent(roomname, () => []);
+    final sala = roomname.trim();
+    usuariosPorSala.putIfAbsent(sala, () => {});
+    historialSalas.putIfAbsent(sala, () => []);
 
     if (miUsuario != null) {
-      usuariosPorSala[roomname]?[miUsuario!] = miEstado;
+      usuariosPorSala[sala]?[miUsuario!] = miEstado;
     }
 
-    _tcpServicio.mandarComando(RoomUsersComando(roomname: roomname));
+    _tcpServicio.mandarComando(RoomUsersComando(roomname: sala));
+
+    notifyListeners();
   }
 
   @override

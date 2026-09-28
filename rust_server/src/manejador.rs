@@ -69,15 +69,29 @@ pub async fn procesar_json(
                 }
 
                 MensajesDeEntrada::NEW_ROOM { roomname } => {
-                    info!("Se crea una nueva sala, llamada: {}", roomname);
-                    //Tengo que meter la lógica para crear las salas
 
                     let emisor = match verificar_usuario(nombre_actual) {
                         Ok(nombre) => nombre,
                         Err(e) => return Some(e),
                     };
 
-                    salas::new_room::procesar(&estado, roomname, emisor).await
+                    let respuesta = salas::new_room::procesar(&estado, roomname.clone(), emisor).await;
+                    
+                    if let Some(MensajesDeSalida::RESPONSE {ref resultado, .. }) = respuesta {
+                        match resultado {
+                            ResultadoOperacion::SUCCESS => {
+                                info!("Sala creada exitosamente: {}", roomname);
+                            }
+                            ResultadoOperacion::ROOM_ALREADY_EXISTS => {
+                                info!("Intento de crear sala duplicada rechazado: {}", roomname);
+                            }
+                            _ => {
+                                info!("Petición de creación de sala inválida: {}", roomname);
+                            }
+                        }
+                    }
+
+                    respuesta
                 }
 
                 MensajesDeEntrada::INVITE {

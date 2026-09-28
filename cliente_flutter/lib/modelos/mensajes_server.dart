@@ -63,7 +63,7 @@ class ResponseMsj extends MensajeServer {
     return ResponseMsj(
       operation: json['operation']?.toString() ?? '',
       result: json['result']?.toString() ?? '',
-      extra: json['extra']?.toString() ?? '',
+      extra: json['extra']?.toString(),
     );
 
   }

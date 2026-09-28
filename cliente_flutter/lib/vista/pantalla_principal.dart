@@ -70,11 +70,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     return ListenableBuilder(
       listenable: widget.controlador,
       builder: (context, child) {
-        if (_salaSeleccionada != null && 
-            !widget.controlador.usuariosPorSala.containsKey(_salaSeleccionada)) {
-          _salaSeleccionada = null;
-        }
-
+        
         final tituloHeader = _usuarioPrivSeleccionado != null
             ? 'Privado con: $_usuarioPrivSeleccionado'
             : _salaSeleccionada == null

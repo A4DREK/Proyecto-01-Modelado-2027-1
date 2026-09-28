@@ -13,6 +13,7 @@ pub async fn procesar(
 
     let roomname_limpio = roomname.trim();
 
+    //validación de los caracteres y ""
     if roomname_limpio.chars().count() > 16 || roomname_limpio.is_empty() {
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::INVALID,
@@ -28,7 +29,7 @@ pub async fn procesar(
         return Some(MensajesDeSalida::RESPONSE {
             operation: Operacion::NEW_ROOM,
             resultado: ResultadoOperacion::ROOM_ALREADY_EXISTS,
-            extra: Some(roomname),
+            extra: Some(roomname_final),
         });
     }
 
@@ -41,7 +42,7 @@ pub async fn procesar(
         invitados: std::collections::HashSet::new(),
     };
 
-    memoria.salas.insert(roomname.clone(), nueva_sala);
+    memoria.salas.insert(roomname_final.clone(), nueva_sala);
 
     Some(MensajesDeSalida::RESPONSE {
         operation: Operacion::NEW_ROOM,

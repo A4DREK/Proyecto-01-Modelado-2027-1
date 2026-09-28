@@ -9,6 +9,14 @@ pub async fn procesar(
     destinatario: String,
     texto: String,
 ) -> Option<MensajesDeSalida> {
+    //Validación para que no te mandes mjs a ti mismo
+    if emisor == destinatario {
+        return Some(MensajesDeSalida::RESPONSE {
+            operation: Operacion::TEXT,
+            resultado: ResultadoOperacion::INVALID,
+            extra: Some(destinatario),
+        });
+    }
     //Lector de la memoria
     let memoria = estado.lock().await;
 

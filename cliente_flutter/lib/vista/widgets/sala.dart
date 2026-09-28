@@ -2,17 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../../controlador/controlador.dart';
 
-Future<String?> mostrarDialogosSala(
+enum AccionSala { crear, unirse }
+
+class ResultadoSala {
+  final AccionSala accion;
+  final String nombre;
+  ResultadoSala(this.accion, this.nombre);
+}
+
+Future<ResultadoSala?> mostrarDialogosSala(
   BuildContext contexto,
   Controlador controlador,
 ) async {
   final control = TextEditingController();
 
-  return showDialog<String>(
+  return showDialog<ResultadoSala>(
     context: contexto,
     builder: (dialogoContexto) {
       return AlertDialog(
-        title: const Text('Unirse o crear nueva sala'),
+        title: const Text('Salas Chat'),
         content: TextField(
           controller: control,
           autofocus: true,
@@ -21,7 +29,13 @@ Future<String?> mostrarDialogosSala(
             border: OutlineInputBorder(),
           ),
           onSubmitted: (nombreSala) {
-            _procesarEntrada(dialogoContexto, controlador, nombreSala);
+            final sala = nombreSala.trim();
+            if (sala.isNotEmpty) {
+              Navigator.pop(
+                dialogoContexto,
+                ResultadoSala(AccionSala.crear, sala),
+              );
+            }
           },
         ),
         actions: [
@@ -29,27 +43,20 @@ Future<String?> mostrarDialogosSala(
             onPressed: () => Navigator.pop(dialogoContexto, null),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
+          OutlinedButton(
             onPressed: () {
-              _procesarEntrada(dialogoContexto, controlador, control.text);
+              final sala = control.text.trim();
+              if (sala.isNotEmpty) {
+                Navigator.pop(
+                  dialogoContexto,
+                  ResultadoSala(AccionSala.unirse, sala),
+                );
+              }
             },
-            child: const Text('Entrar'),
+            child: const Text('Unirse'),
           ),
         ],
       );
     },
   );
-}
-
-void _procesarEntrada(
-  BuildContext contexto,
-  Controlador controlador,
-  String nombre,
-) {
-  final sala = nombre.trim();
-
-  if (sala.isNotEmpty) {
-    controlador.entrarSala(sala);
-    Navigator.pop(contexto, sala);
-  }
 }
