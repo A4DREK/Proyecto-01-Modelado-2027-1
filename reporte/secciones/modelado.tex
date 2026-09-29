@@ -1,0 +1,106 @@
+\section{Modelado y Programación}
+% Recordar que esta es la parte más larga de todo el documento
+
+Para iniciar con la realización de este chat, primero se tuvo que realizar una ardua investigación sobre las herramientas de forma detallada. Además, desde un inicio se nos notificó que estaba estrictamente prohibido utilizar el lenguaje de programación \textit{Java}, lo cual resultó un pequeño impedimento ya que era la única herramienta sobre la que se poseía un dominio. Por ello, se inició la búsqueda de alternativas tanto para el cliente como para el servidor. 
+
+Después de investigar y evaluar varias opciones, se decidió utilizar el lenguaje de programación \textbf{Rust} para el servidor y el toolkit \textbf{Flutter} (que utiliza el lenguaje \textit{Dart}) para el cliente y la interfaz gráfica. Se optó por Rust debido a su forma peculiar de manejar la memoria, conocida como \textit{Rust Ownership}: Rust asigna cada dato en el heap a una variable propietaria única; cuando esa variable sale de su ámbito (scope), Rust libera automáticamente la memoria asociada, previniendo fugas de memoria y punteros colgados sin necesidad de gestión manual. Esto permite que Rust no dependa de un recolector de basura (Garbage Collector) como ocurre en Java \cite{rust-ownership}.
+
+Por su parte, Flutter es un framework \textit{open-source} desarrollado por Google en 2015 con el objetivo de construir interfaces gráficas y compilarlas de forma nativa en múltiples plataformas. Su paradigma es Orientado a Objetos (OOP) y la sintaxis que maneja es muy similar a la de Java, por lo que resultó ideal para el desarrollo del cliente. Al ser multiplataforma, se optó por compilar únicamente para Linux, macOS y Windows, ya que este chat será un programa exclusivo para entornos de escritorio. La configuración no fue un problema, pues el propio constructor de Flutter brinda las herramientas necesarias para estos sistemas operativos.
+
+Una vez definidos los sistemas operativos, se continuó con el diseño estructural del proyecto. Se investigaron varios patrones de arquitectura de software, destacando el patrón Modelo-Vista-Controlador (MVC), la arquitectura Cliente-Servidor y el diseño Top-Down. Inicialmente, se optó por trabajar con el patrón MVC y una arquitectura Cliente-Servidor. Sin embargo, a medida que el proyecto avanzaba y se implementaban patrones de diseño de \textit{concurrencia}, surgieron problemas de legibilidad; llegó un momento en el que era muy difícil identificar qué parte del código representaba cada función. Por esto, se implementó una refactorización completa de los archivos, tanto en el servidor como en el cliente.
+
+Teniendo esto en cuenta, procederemos a explicar el servidor de Rust.
+
+\subsection{Servidor en Rust}
+Consideramos que el servidor es probablemente una de las partes menos triviales de implementar del proyecto. Esto se debe a que requiere la ejecución de acciones de forma asíncrona; es decir, el servidor debe ser capaz de realizar varias tareas al mismo tiempo de manera que las acciones bloqueantes puedan pausarse y permitir que el sistema procese otras peticiones. 
+
+La organización final de los archivos se basó en el patrón de diseño "Top-Down". Se partió de una carpeta general llamada \textit{rust\_server} generada con la ayuda de la herramienta Cargo. Dentro de esta estructura, la carpeta \textit{src} actúa como la raíz de todo el servidor. En su interior se crearon dos subcarpetas: \textit{salas} y \textit{usuarios}, las cuales adoptaron todos los \textit{enums} creados en el archivo de \textit{protocolo}. En estas subcarpetas se agregaron los algoritmos que son utilizados por el \textit{manejador}. Esto se puede ver de forma más clara en el siguiente diagrama de componentes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{DiagramaEstructuraServerRust.png}
+    \caption{Diagrama de estructura del servidor en Rust (se omiten algunos archivos auxiliares para mayor claridad).}
+    \label{fig:estructura_server}
+\end{figure}
+
+En la parte del diseño se detallará de forma más explícita el funcionamiento del servidor, pero en resumen, este debe cumplir con los siguientes puntos:
+
+\begin{enumerate}
+    \item Establecer conexiones de tal manera que se puedan mantener activas por un tiempo indeterminado.
+    \item Recibir peticiones del cliente y procesarlas estrictamente de acuerdo con el protocolo establecido.
+    \item Almacenar los usuarios y el estado de las acciones dictadas por el protocolo.
+    \item Transmitir las acciones y mensajes necesarios al resto de los clientes conectados.
+    \item Estar programado de tal forma que sea tolerante a fallos (prácticamente "indestructible" ante desconexiones abruptas).
+    \item Realizar todas las acciones de red y lectura/escritura de forma asíncrona y concurrente.
+\end{enumerate}
+
+El protocolo mencionado nos fue proporcionado desde el inicio como una guía y estándar, garantizando que cualquier cliente de la clase pudiera conectarse a cualquier servidor. Cabe destacar que el servidor representa la mitad de la arquitectura "Cliente-Servidor", un modelo donde múltiples clientes solicitan servicios o recursos de un nodo centralizado \cite{client-server-arch}.
+
+\subsection{Cliente en Flutter}
+Para analizar al cliente, debemos retomar el patrón de diseño Modelo-Vista-Controlador (MVC). De acuerdo con el glosario de MDN Web Docs, este patrón se define de la siguiente manera \cite{mdn-mvc}:
+
+\begin{quote}
+    MVC (Modelo-Vista-Controlador) es un patrón en el diseño de software comúnmente utilizado para implementar interfaces de usuario, datos y lógica de control. Enfatiza una separación entre la lógica de negocios y su visualización. Esta "separación de preocupaciones" proporciona una mejor división del trabajo y una mejora de mantenimiento.
+    
+    Las tres partes del patrón de diseño de software MVC se pueden describir de la siguiente manera:
+    \begin{enumerate}
+        \item \textbf{Modelo:} Maneja datos y lógica de negocios.
+        \item \textbf{Vista:} Se encarga del diseño y presentación.
+        \item \textbf{Controlador:} Enruta comandos a los modelos y vistas.
+    \end{enumerate}
+\end{quote}
+
+Bajo esta filosofía, el cliente desarrollado debe cumplir con las siguientes responsabilidades:
+
+\begin{enumerate}
+    \item Conectarse al servidor de forma exitosa a través de un socket TCP.
+    \item Empaquetar y enviar los comandos ingresados de forma que coincidan exactamente con lo esperado por el servidor.
+    \item Traducir y deserializar los mensajes recibidos desde el servidor para actualizar la interfaz.
+    \item Proporcionar una Interfaz de Usuario (UI) intuitiva, aislando al usuario final de la complejidad de la red.
+\end{enumerate}
+
+El objetivo principal de la interfaz gráfica es que el usuario final pueda comunicarse utilizando "lenguaje natural", mientras el cliente se encarga de traducir estas interacciones en los comandos estructurados (en formato JSON) necesarios para la comunicación con el servidor. De esta manera, el usuario interactúa cómodamente sin tener que preocuparse por tareas técnicas como escribir JSONs a mano o leer logs en una terminal.
+
+\subsection{Diseño general}
+Para poder entender de mejor manera el como funciona el servidor, se realizo el siguiente diagrama de secuencia: 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{DiagramaSecuenciaServer.png}
+    \caption{Diagrama de Secuencia del servidor en Rust.}
+    \label{fig:SecuenciaServer}
+\end{figure}
+
+Lo que muestra este diagrama es:
+
+\begin{enumerate}
+    \item \textbf{Traducción:} \textit{manejador} $\rightarrow$ \textit{Protocolo} (pide leer el JSON) y luego \textit{Protocolo} $\rightarrow$ \textit{manejador} (devuelve el dato estructurado).
+    \item \textbf{Enrutamiento:} \textit{manejador} $\rightarrow$ \textit{Room} o \textit{User} (delega la acción directamente, sin involucrar al protocolo).
+    \item \textbf{Memoria:} \textit{Room} o \textit{User} $\leftrightarrow$ \textit{Estado} (verifican o modifican la lista concurrente de usuarios).
+    \item \textbf{Retorno:} \textit{Room} o \textit{User} $\rightarrow$ \textit{manejador} (confirman la ejecución).
+    \item \textbf{Salida:} \textit{manejador} $\rightarrow$ \textit{Cliente} (envía la respuesta final a través de la red).
+\end{enumerate}
+
+Con esto nos damos una idea más clara de como es que el servidor debe de funcionar para que se cumpla con los requerimientos que fueron especificados.
+
+Ahora, para poder entender como es que funciona el Cliente, se utilizará un diagrama del patron Modelo-Vista-Controlador
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{MVCliente.png}
+    \caption{Diagrama de MVC del cliente en Faltter.}
+    \label{fig:diagramaMVC}
+\end{figure}
+
+El diagrama de clases y paquetes (Figura \ref{fig:diagramaMVC}) ilustra la implementación concreta del patrón Modelo-Vista-Controlador en el cliente de Flutter. La estructura garantiza una separación de responsabilidades, dividiendo el sistema en tres capas principales:
+
+\begin{enumerate}
+    \item \textbf{Vista:} Compuesta por la clase \texttt{pantalla\_principal} y la subcarpeta de \texttt{widgets/}. Esta capa es puramente visual y declarativa. Se encarga de renderizar la interfaz de usuario y capturar los eventos físicos (como el ingreso de texto o el clic en botones). Como indica el flujo, la Vista no toma decisiones lógicas; simplemente delega las acciones del usuario enviándolas hacia el Controlador.
+    
+    \item \textbf{Controlador:} Actúa como el cerebro y mediador de la aplicación. Agrupa la clase \texttt{controlador} y la subcarpeta de \texttt{servicios/} (donde reside el manejo del socket TCP). Su función es recibir las interacciones de la Vista, ejecutar la lógica de red para comunicarse con el servidor en Rust y, una vez que obtiene una respuesta, procesar esos datos para enviarlos al Modelo.
+    
+    \item \textbf{Modelo:} Contiene las clases \texttt{cliente\_comandos}, \texttt{protocolo} y \texttt{mensajes\_server}. Esta capa define las estructuras de datos estrictamente tipadas y representa el estado interno del cliente. Aquí se almacena la información estructurada que coincide con el protocolo del servidor (historial de mensajes, lista de usuarios, etc.).
+\end{enumerate}
+
+El ciclo de vida de un evento comienza en la Vista, fluye hacia el Controlador para su procesamiento (envío y recepción por red) y desciende al Modelo para actualizar el estado de los datos. Finalmente, el ciclo se cierra cuando el cambio de estado en el Modelo notifica a la Vista, provocando que la interfaz gráfica se reconstruya para mostrar al usuario la información más reciente.
+
+Dentro del proyecto en la carpte de \texttt{cliente\_flutter} es posible observar la implementación de este patrón de diseño, sin embargo tambien se utilizó un poco del patron de "Top-Down", especificamtne en la carpeta de vista, ya que por las mismas razones que el servidor, llegó un punto el cual el código era ilegible, y era muy dificil enontrar posibles bugs o errores de la lógica de la interfaz gráfica, es por eso que creo la subcarpeta de \texttt{widgets/}, el cual engloba los puntos más primordiales para la interfaz gráfica, haciendo que el archivo de \texttt{pantalla\_principal} sea mucho más legible.
+
