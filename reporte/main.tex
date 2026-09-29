@@ -69,9 +69,9 @@
     \textbf{Resumen}\\
 
 % Puedes colocar el texto del resumen en esta parte
+Este proyecto presenta el desarrollo de un sistema de chat basado en la arquitectura Cliente-Servidor, diseñado para operar mediante conexiones y manejo de red. Ante la restricción estricta de no utilizar el lenguaje Java, se adoptaron tecnologías alternativas de alto rendimiento tras una ardua investigación. El servidor fue implementado en Rust, aprovechando su gestión de memoria sin recolector de basura (*Rust Ownership*) y garantizando tolerancia a fallos mediante la ejecución asíncrona de peticiones. Por su parte, el cliente se desarrolló utilizando el *framework* Flutter (Dart) bajo el patrón de diseño Modelo-Vista-Controlador (MVC), proporcionando una interfaz gráfica nativa para entornos de escritorio (Linux, macOS). El resultado es un sistema funcional, escalable y estructurado que procesa y traduce interacciones en lenguaje natural a un protocolo estandarizado basado en JSON.
 
     \medskip
-    \textit{Palabras clave:} \textbf{Lorem, Ipsum, eusimod, sedes }
 \end{tcolorbox}
 \vspace{-0.7in} 
 }
@@ -94,11 +94,23 @@
 
 \newcommand{\grade}{^{\circ}}
  \setlength {\marginparwidth }{2cm}
- 
+
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small, % Fuente de código 
+  breaklines=true,            % Activa el salto de línea automático
+  columns=fullflexible
+}
+
 \begin{document}
 
 \maketitle
+
 \input{secciones/introduccion.tex}
 \input{secciones/modelado.tex}
+\input{secciones/implementacion.tex}
+\input{secciones/conclusiones.tex}
 
+\bibliographystyle{plain} 
+\bibliography{references}
 \end{document}

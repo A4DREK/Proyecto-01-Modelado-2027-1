@@ -1,1 +1,100 @@
-\section{Implementación }
+\section{Implementación}
+
+Ya una vez definido los patrones de disñeo y como será el funcionamiento del servidor y del cliente, procedemos con la implementación de estas partes del proyecto.
+
+\subsection{Para el server de Rust}
+Para el desarrollo cmo tal del server de rust, se opto por utilizar herramientas de programación asíncrona, de forma particular, se hizo uso de la herramienta de Tokio.
+Tokio es una herramienta diseñada para tranajos asíncronos dentro de Rust, provee las herramientas necesarias para aplicaciones que requieran uso de la web (como es el caso de nuestro servidor), cosas que tiene este runtime a comparación de, la liberia standard, por decir algún ejemplo es que Tokio nos da la capacidad de: 
+
+%%Agregar referencias de la página oficial de Tokio al final de cada punto 
+\begin{itemize}
+    \item \textbf{Es Rápido: } El runtime de Tokio, es escrito plenamente en Rust, por lo que hereda la propia filosofia de Rust, además de ser escrito sobre el async y await funciones, las cuales permiten aumentar el número de operacinoes concurrentes que se estén realizando, es decir, permite escabilizar el server a muchos clientes
+    \item \textbf{Es Fácil: } A pesar de lo complicado que puede llegar a ser escribir buen código en Rust, Tokio, sigue el nombramineto de varios comandos de la biblioteca std, por lo que es  fácil convertir código de la librería std a Tokio 
+    \item \textbf{Es Flexible: } Tokio ofrece múltiples variantes de su entorno de ejecución (*runtime*), que abarcan desde un entorno multihilo con estrategia de *work-stealing* hasta uno ligero de un solo hilo. 
+\end{itemize}
+
+Además de utilizar el crate de \texttt{serde\_Json}, la cual nos brinda todas las herramientas necesarias para podeer hacer el parseo con el JSON que marca el protocolo, gracias a la docuemntación fue que nació la idea de agrupar todos los posibles casos del JSONS dentrode enums, esto para que fuera más fácil el parseo y no hubiera errores de typo o de formato.
+
+Otra de las tecnologías que se utilizaron es el uso de Arc y de Mutex.
+Arc hace referencia a "Atomic Reference Counting", este se encuentra dentro de la biblioteca estándar, este módulo permite a varios hilos compartir el ownership de los datos. Asegurandose que la información solo sea desechada cuando todas las referencias a través de todos los hilos de ejecución hayan terminado
+Mientras que MUTEX, el cual hace referencia a "Mutual Exclusion", es un primitivo de sincronización en std::sync , el cual se encarga de que un hilo de ejecución solamente pueda acceder a la información a la vez
+Las ventajas de ocupar ARC y MUTEX son: 
+
+\begin{itemize}
+    \item Comparte la información de forma segura gracias a Arc
+    \item Controla la mutabilidad con Mutex 
+    \item Elimina data races en tiempo de compilación 
+\end{itemize}
+
+Entonces, en el server de Rust podemos recueprar el uso de tecnologías como Rust, \texttt{Serde\_Json}, Arc y Mutex, los cuales considero que fueron las tecnologías más importantes a la hora de realizar el server
+También cabe recalcar que se implemento el uso de pruebas unitarias en el parseo del JSON dentro del servidor y de la realización de una prueba de estres, ya que es de suma importancia saber que nuestro servidor funciona completamente, y que no tiene defectos que pudieran echar a perder el chat en una situación de la vida real.
+
+En el repositorio de GitHub, al inicio se muestran los comandos necesarios para poder correr el servidor de forma correcta. Además, dentro de la carpeta \texttt{rust\_server} se encuentra otro \textit{README.md} el cual detalla cómo deben llevarse a cabo las pruebas unitarias y la prueba de estrés, la cual fue escrita con las mismas herramientas con las que se desarrolló todo el servidor.
+Sin embargo, en este documento se volverá a especificar qué comandos deben ejecutarse para poder correr el servidor:
+
+\begin{enumerate}
+    \item \textbf{Requisitos previos:} Es necesario tener instalados Rust y Cargo. Para comprobar que se cuenta con el compilador del lenguaje y el gestor de paquetes, se debe escribir en la terminal:
+\begin{lstlisting}
+rustc --version && cargo --version
+\end{lstlisting}
+
+    \item \textbf{Compilación:} Una vez clonado el repositorio, se debe navegar hasta el directorio del servidor y compilar el código mediante el comando:
+\begin{lstlisting}
+cargo build
+\end{lstlisting}
+
+    \item \textbf{Ejecución del servidor:} Para correr el programa y levantar el servidor, basta con utilizar \texttt{cargo run}. Sin embargo, para poder visualizar todos los registros (\textit{logs}) de las peticiones que recibirá el servidor, se recomienda el uso del siguiente comando, donde se puede especificar el puerto (por defecto se utiliza el 1234):
+\begin{lstlisting}
+RUST_LOG=info cargo run -- --puerto <PUERTO>
+\end{lstlisting}
+
+    \item \textbf{Conexión manual (opcional):} Para conectarse al servidor sin necesidad de utilizar el cliente de Flutter, se puede emplear \texttt{nc} (Netcat) o \texttt{telnet} con la dirección IP de la red local, usando el comando:
+\begin{lstlisting}
+telnet <DIRECCION_IP> <PUERTO>
+\end{lstlisting}
+
+    \item \textbf{Pruebas de estrés:} Si se desea ejecutar la prueba de estrés, es necesario aumentar el límite de descriptores de archivos del sistema operativo para permitir múltiples conexiones simultáneas, y luego correr el entorno de pruebas con los siguientes comandos:
+\begin{lstlisting}
+ulimit -n 4096
+RUST_LOG=info cargo test --test test_estres -- --nocapture
+\end{lstlisting}
+\end{enumerate}
+
+
+\subsection{Para el cliente realizado en Flutter}
+Para el desarrollo del cliente dentro de Flutter, la realidad es que fue mucho más sencillo de lo esperado, ya que muchas de las herramientas que se necesitaban pára poder realizar programación asíncrona y demás ya se escontraban en las bibliotecas que vienen por defecto dentro de Flutter, ya que como se mencionó anteriormente, este framework está diseñado para poder crear aplicaciones en distintos dispositivos que muy probablemente necesiten acceso a conexiones ya sea como nuestro caso, TCP.
+Con esto dicho, el mayo de las complicaciones fue el uso de la biblioteca de material.dart, ya. que esta biblioteca fue la que nos permitió crear nuestra interfaz gráfica, aunque sencilla, es más que funcional, para esta bibliteca se tuvo que consultar varios blogs de inteernet donde explicaban que es lo que hacía casí que cada comando, al final se llego a cierta repetición de patrones por lo que llegó un momento en el que el escribir un botón se vovliá algo demasiado monótono, sin embargo, cabe recalcar como punto de mejora para este y futuros pryectos, que hay que tener muy en claro que tipo de dispositivos se requerirá utulizar, ya que Flutter tambipen acepta compatibilidad con sistemas móviles como Andoird o IOS, por lo que se tiene que revisar la documentación para saber que tanto cambia, con solo desarrllar para escritorios o laptop
+
+Por otro lado, para la configuración y ejecución del cliente gráfico desarrollado en Flutter, se establecen dos modalidades de uso: el modo de desarrollo y la compilación de un ejecutable nativo. A continuación se detallan los pasos necesarios:
+
+\begin{enumerate}
+    \item \textbf{Requisitos previos:} Es indispensable contar con el framework de Flutter instalado y configurado según el sistema operativo (distribución de Linux, macOS o Windows). Para verificar que el SDK está correctamente instalado, se puede ejecutar en la terminal:
+    \begin{lstlisting}
+        flutter --version
+    \end{lstlisting}
+
+        \item \textbf{Consideración importante:} Antes de iniciar cualquier instancia del cliente, el servidor en Rust \textbf{debe estar en ejecución} y escuchando en el puerto designado.
+
+        \item \textbf{Ejecución en Modo Desarrollador:} Para correr el cliente directamente desde el código fuente para realizar pruebas, se debe navegar al directorio \texttt{cliente\_flutter} y ejecutar el siguiente comando, sustituyendo los parámetros por la información de la conexión:
+    \begin{lstlisting}
+        flutter run -d <OS> -a <IP> -a <Puerto> -a <Usuario>
+    \end{lstlisting}
+        \textit{Nota:} Si se desea conectar múltiples clientes simultáneamente desde la misma computadora, basta con abrir diferentes ventanas de terminal y ejecutar el mismo comando, asegurándose de utilizar un nombre de usuario distinto para cada instancia.
+
+        \item \textbf{Compilación de Ejecutable (Modo Producción):} Si se desea generar una aplicación nativa, primero se debe compilar el proyecto mediante el comando:
+    \begin{lstlisting}
+        flutter build <OS>
+    \end{lstlisting}
+        
+        Una vez finalizada la construcción, se puede lanzar el binario generado pasando los argumentos de conexión de forma directa. La ruta del ejecutable final varía dependiendo de la plataforma de destino.
+        
+        Para entorno macOS:
+    \begin{lstlisting}
+        ./build/macos/Build/Products/Release/cliente_flutter <IP> <Puerto> <Usuario>
+    \end{lstlisting}
+        
+        Para entorno Linux (generalmente):
+    \begin{lstlisting}
+        ./build/linux/x64/release/bundle/cliente_flutter <IP> <Puerto> <Usuario>
+    \end{lstlisting}
+\end{enumerate}
